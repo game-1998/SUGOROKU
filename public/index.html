@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>双六ゲーム</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/ammo.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<body>
+  <!-- ホーム画面 -->
+  <div id="homeScreen">
+    <h1>双六ゲームへようこそ！</h1>
+    <label for="playerCount">プレイヤー人数（2〜7人）:</label>
+    <select id="playerCount">
+      <option value="" disabled selected>選択してください</option>
+      <option value="2">2人</option>
+      <option value="3">3人</option>
+      <option value="4">4人</option>
+      <option value="5">5人</option>
+      <option value="6">6人</option>
+      <option value="7">7人</option>
+    </select>
+
+    <!-- プレイヤー名入力欄（動的に生成） -->
+    <div id="playerNameInput" style="display:none;"></div>
+
+    <!-- ゲーム開始ボタン -->
+    <br>
+    <button id="startGame">ゲーム開始</button>
+  </div>
+
+  <!-- プレイヤーの順番を表示 -->
+  <div id="playerOrderDisplay" style="display: none; text-align: center;">
+    <p id="playerOrderText"></p>
+    <button id="confirmOrderButton">OK!</button>
+  </div>
+
+  <!-- プレイ画面（最初は非表示） -->
+  <div id="gameScreen" class="hidden">
+    <h2>ゲーム画面</h2>
+    
+    <!-- お椀エリア -->
+    <div id="bowlArea">
+      <canvas id="threeCanvas"></canvas>
+    </div>
+
+    <!-- プレイヤー交代ボタン -->
+    <button id="nextPlayerButton" class="hidden">次のプレイヤーに交代</button>
+    <p id="turnInfo"></p>
+
+    <!-- マスの配置 -->
+    <div id="board"></div>
+
+    <!-- 出目の表示 -->
+    <div id="dice-result">出目：？</div>
+
+    <!-- ホーム画面へ遷移 -->
+    <button id="backToHomeButton" class="hidden">ホーム画面へ戻る</button>
+  </div>
+
+  <!-- JavaScriptを読み込む -->
+<script type="module">
+  import * as THREE from 'https://unpkg.com/three@0.157.0/build/three.module.js';
+  window.THREE = THREE; // 他のJSファイルでも使えるようにグローバル化
+  window.addEventListener("DOMContentLoaded", async () => {
+    const { startGameApp } = await import('../src/main.js');
+    startGameApp();
+  });
+</script>
+</body>
+</html>

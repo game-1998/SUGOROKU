@@ -1,9 +1,13 @@
 /* 全体の文字と配置 */
 body {
+  height: 100dvh;
+  width: 100vw; /* 画面全体の幅に固定 */
   font-family: sans-serif;
   text-align: center;
-  padding: 20px;
-  background-color: #fdf6e3;
+  margin: 0;
+  padding: 10px;
+  box-sizing: border-box; /* paddingを含めて100vhに収める */
+  background-color: #f9c5d5;
 }
 
 /* タイトル */
@@ -21,48 +25,97 @@ h1 {
 
 /* お椀エリア（サイコロを振る場所） */
 #bowlArea {
-  position: relative;
-  width: 100%;
-  max-width: 800px; /* 最大幅を制限して中央寄せ */
-  height: 500px;    /* 高さを広げてお椀全体が見えるように */
-  margin: 0 auto 20px;
-  overflow: hidden;
-  background-color: #eee;
-}
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
 
+  width: 100%;
+  max-width: 800px;
+  height: auto;
+  background-color: #eee;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.3);
+
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+#bowlArea.show{
+  display: flex; /* 表示時に flex にする*/
+}
 
 #threeCanvas {
   width: 100%;
-  height: 100%;
+  aspect-ratio: 1 / 1; /* 幅と高さを同じにする */
   background-color: #ccc; /* 一時的に背景色を付けて確認しやすく */
   touch-action: none;
   display: block;
 }
 
 /* 出目の表示 */
-#result {
-  font-size: 18px;
-  margin-bottom: 20px;
+#dice-result {
+  font-size: 24px;
+  font-weight: bold;
+  margin: 0;
+  text-align: center;
+}
+
+/* ゲーム画面 */
+#gameScreen {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box; /* paddingを含めて100vhに収める */
+}
+
+#gameScreen.show {
+  display: flex;
+}
+
+h2 {
+  margin: 0;
+  padding-top: 15px;
+  padding-bottom: 15px;
 }
 
 /* 盤面（マス） */
 #board {
-  display: grid;
-  grid-template-columns: repeat(5, 60px);
-  gap: 5px;
-  justify-content: center;
-  margin-bottom: 40px;
+  position: relative;
+  width: 100%;
+  flex: 1;
+  box-sizing: border-box; /* paddingを含めて100vhに収める */
+  overflow-y: scroll;
 }
 
 .cell {
-  width: 60px;
-  height: 60px;
-  background-color: #fff;
-  border: 2px solid #aaa;
+  position: absolute;
+  width: clamp(50px, 10vw, 120px);
+  aspect-ratio: 2 / 3;
+  background-image: url('./images/card.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
   border-radius: 8px;
-  font-size: 16px;
-  line-height: 60px;
-  position: relative;
+  font-size: clamp(12px, 3vw, 18px);
+  color: #333;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* セル同士をつなぐ道 */
+#pathLayer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* 複数プレイヤーのコマ（共通スタイル） */
@@ -106,3 +159,21 @@ h1 {
 .hidden {
   display: none;
 }
+
+/* お椀エリアを中央に表示するスタイル */
+.popup-center {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100;
+  width: 300px;
+  height: 300px;
+  background-color: #eee;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+

@@ -14,13 +14,11 @@ export function setupDiceController({
   let swipePath = [];
   let diceStopped = false;
   const tmpTrans = new Ammo.btTransform();
-  const rect = canvas.getBoundingClientRect();
-  const canvasWidth = rect.width;
-  const canvasHeight = rect.height;
 
   canvas.addEventListener("pointerdown", (event) => {
     if (!canRollRef.value || canJudgeDiceRef.value) return;
     swipePath = [];
+    const rect = canvas.getBoundingClientRect();
     pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     raycaster.setFromCamera(pointer, camera);
@@ -79,6 +77,11 @@ export function setupDiceController({
         console.warn("[pointerup] スキップされました（ドラッグしてない）");
         return;
     }
+
+    const rect = canvas.getBoundingClientRect();
+    const canvasWidth = rect.width;
+    const canvasHeight = rect.height;
+
     diceBody.setCollisionFlags(diceBody.getCollisionFlags() & ~2); // キネマティック解除
     diceBody.setActivationState(Ammo.ACTIVE_TAG); // 物理演算再開
     console.log("[pointerup] キネマティック解除 & 物理演算再開");
@@ -100,27 +103,39 @@ export function setupDiceController({
 
     diceBody.setActivationState(Ammo.ACTIVE_TAG); // 物理演算再開
     
-    let totalDx = 0, totalDy = 0;
+    let totalVx = 0, totalVy = 0;
     if (swipePath.length >= 6) {
       for (let i = swipePath.length - 6; i < swipePath.length - 1; i++) {
         const a = swipePath[i];
         const b = swipePath[i + 1];
-        totalDx += (b.x - a.x) / (b.t - a.t);
-        totalDy += (b.y - a.y) / (b.t - a.t);
+        totalVx += (b.x - a.x) / (b.t - a.t);
+        totalVy += (b.y - a.y) / (b.t - a.t);
       }
 
-      const normalizedDx = totalDx / canvasWidth;
-      const normalizedDy = totalDy / canvasHeight;
+      const holdDuration = getHoldDuration(swipePath);
+      const isSwipe = holdDuration < 200;
+      const normalizedDx = totalVx / canvasWidth;
+      const normalizedDy = totalVy / canvasHeight;
 
-      setTimeout(() => {
-        diceBody.setAngularVelocity(new Ammo.btVector3(-normalizedDy * 100000, 0, -normalizedDx * 100000));
-        diceBody.setLinearVelocity(new Ammo.btVector3(normalizedDx * 100000, 0, -normalizedDy * 100000)); 
+      if (isSwipe){
+        setTimeout(() => {
+          diceBody.setAngularVelocity(new Ammo.btVector3(-normalizedDy * 100000, 0, -normalizedDx * 100000));
+          diceBody.setLinearVelocity(new Ammo.btVector3(normalizedDx * 100000, 0, -normalizedDy * 100000)); 
+          diceBody.setActivationState(Ammo.ACTIVE_TAG);
+          diceBody.activate();
+          setCanJudgeDice(true);
+          console.log("[pointerup] canJudgeDiceRef を true に設定しました");
+        }, 0);
+      }else {
+        // 無回転落下（静止判定）
+        diceBody.setAngularVelocity(new Ammo.btVector3(0, 0, 0));
+        diceBody.setLinearVelocity(new Ammo.btVector3(0, 0, 0));
         diceBody.setActivationState(Ammo.ACTIVE_TAG);
         diceBody.activate();
         setCanJudgeDice(true);
-        console.log("[pointerup] canJudgeDiceRef を true に設定しました");
-      }, 0);
-    } else {
+        console.log("[pointerup] 無回転落下（静止判定）");
+      }
+    }else {
       // タップとみなしてランダム回転＋落下
       const randX = (Math.random() - 0.5) * 10;
       const randZ = (Math.random() - 0.5) * 10;
@@ -131,16 +146,18 @@ export function setupDiceController({
       setCanJudgeDice(true);
       console.log("[pointerup] タップでランダム回転落下");
     }
-    const rect = canvas.getBoundingClientRect();
+
     const pointer = new THREE.Vector2(
       ((e.clientX - rect.left) / rect.width) * 2 - 1,
       -((e.clientY - rect.top) / rect.height) * 2 + 1
     );
+
     if (onPointerRelease) {
       const dx = swipePath.length >= 6 ? swipePath.at(-1).x - swipePath.at(-6).x : 0;
       const dy = swipePath.length >= 6 ? swipePath.at(-1).y - swipePath.at(-6).y : 0;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      const isSwipe = distance > 10;
+      
+      const holdDuration = getHoldDuration(swipePath);
+      const isSwipe = swipePath.length >= 6 && holdDuration < 200;
       onPointerRelease({ isSwipe, dx, dy, pointer });
     }
     swipePath = [];
@@ -188,9 +205,6 @@ export function setupDiceController({
 
       }
 
-      const resultDisplay = document.querySelector("#dice-result");
-      if (resultDisplay) resultDisplay.textContent = `出目：${value}`;
-
       if (onDiceStop) {
         onDiceStop(value);
       }
@@ -200,4 +214,13 @@ export function setupDiceController({
   }
 
   animate(); // 毎フレーム更新開始
+}
+
+
+function getHoldDuration(swipePath) {
+  if (swipePath.length < 2) return 0;
+
+  const last = swipePath.at(-1);
+
+  return performance.now() - last.t;
 }

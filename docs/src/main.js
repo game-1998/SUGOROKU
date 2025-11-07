@@ -1,7 +1,10 @@
 import { rollDicePhysics, initPhysics, animate } from './core/physics.js';
 import { init3DDice } from './core/diceGraphics.js';
-import { setupPlayers, updateTurnDisplay, movePlayer, getColor } from './ui/ui.js';
+import { setupPlayers, updateTurnDisplay, movePlayer, showBowlArea, hideBowlArea, showDiceResult } from './ui/ui.js';
 import { getState, setCanRoll, setCanJudgeDice, setCurrentPlayer, getCurrentPlayer, setPlayers, getPlayers } from './state/gameState.js';
+import { resizeCanvasToFit } from './utils/canvasUtils.js';
+import { generateBoard, updateCellPositions } from './board/board.js';
+
 
 
 export async function startGameApp() {
@@ -13,7 +16,7 @@ export async function startGameApp() {
   // ホーム画面の要素を取得
   const startButton = document.getElementById("startGame");
   const homeScreen = document.getElementById("homeScreen");
-  const gameScreen = document.getElementById("gameScreen");
+ // const gameScreen = document.getElementById("gameScreen");
 
   // プレイ画面の要素を取得
   const resultElement = document.getElementById("dice-result");
@@ -25,19 +28,6 @@ export async function startGameApp() {
   let rigidBodies = [];
   let diceInit;
   let isDragging = false; // 指が触れている間 true
-  let startX = 0;  // スワイプ開始位置（X）
-  let startY = 0;  // スワイプ開始位置（Y）
-
-  //マス目を任意の数生成
-  const board = document.getElementById("board");
-  for (let i = 1; i <= 10; i++) {
-    const cell = document.createElement("div");
-    cell.className = "cell";
-    cell.textContent = i;
-    board.appendChild(cell);
-  }
-
-
 
   let playerNames = [];
 
@@ -94,9 +84,23 @@ export async function startGameApp() {
   document.getElementById("confirmOrderButton").addEventListener("click", () => {
     // 順番表示を非表示
     document.getElementById("playerOrderDisplay").style.display = "none";
-
+    
     //ゲーム画面を表示
-    document.getElementById("gameScreen").style.display = "block";
+    const gameScreen = document.getElementById("gameScreen");
+    gameScreen.classList.remove("hidden");
+    gameScreen.classList.add('show');
+
+    // 盤面生成（座標付き）
+    const MAX_CELL_INDEX = 20;
+    const { cells, board, svg } = generateBoard(MAX_CELL_INDEX);
+
+    function redraw() {
+      requestAnimationFrame(() => updateCellPositions(cells, board, svg));
+    }
+
+    redraw();
+    window.addEventListener('resize', redraw);
+    board.addEventListener('scroll', redraw);
 
     nextPlayerButton = document.getElementById("nextPlayerButton");
     turnInfo = document.getElementById("turnInfo");
@@ -130,18 +134,19 @@ export async function startGameApp() {
         }
       },
       onDiceStop: (diceValue) => {
-        // 出目が確定したらここが呼ばれる！
-        const turnInfo = document.getElementById("turnInfo");
-        const nextPlayerButton = document.getElementById("nextPlayerButton");
+        showDiceResult(diceValue); // 出目を表示
 
-        const updatedPlayer = movePlayer(diceValue, getCurrentPlayer(), (cp) => {
-          setCurrentPlayer(cp);
-        });
+        setTimeout(() => {
+          hideBowlArea(); // お椀を非表示
 
-        setCurrentPlayer(updatedPlayer);
-        updateTurnDisplay(updatedPlayer, turnInfo, nextPlayerButton);
+          const updatedPlayer = movePlayer(diceValue, getCurrentPlayer(), (cp) => {
+            setCurrentPlayer(cp);
+          });
 
-        nextPlayerButton.style.display = "block"; // 次のターンへ
+          setCurrentPlayer(updatedPlayer);
+          updateTurnDisplay(updatedPlayer, turnInfo, nextPlayerButton);
+          nextPlayerButton.style.display = "block"; // 次のターンへ
+        }, 3000);
       },
       onPointerRelease: ({ isSwipe, dx, dy, pointer }) => {
         // ここは空でもOK。diceGraphics.js側で使うために渡すだけ
@@ -162,11 +167,10 @@ export async function startGameApp() {
     renderer = diceInit.renderer;
     camera = diceInit.camera;
 
-    // カメラとレンダラーのサイズを canvas に合わせて設定
-    camera.aspect = canvas.clientWidth / canvas.clientHeight;
-    camera.updateProjectionMatrix();
+    setTimeout(() => {
+      resizeCanvasToFit(canvas, camera, renderer,scene);
+    }, 0);
 
-    renderer.setSize(canvas.clientWidth, canvas.clientHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
 
     animate(renderer, scene, camera, rigidBodies, physicsWorld); // 毎フレーム更新
@@ -174,11 +178,17 @@ export async function startGameApp() {
       // ボタンを押したらサイコロを振れるようにする
       nextPlayerButton.addEventListener("click", () => {
         nextPlayerButton.style.display = "none";
+
+        showBowlArea(); //お椀エリアの表示
+        requestAnimationFrame(() => {
+          resizeCanvasToFit(canvas, camera, renderer, scene);
+        });
+        
         const players = getPlayers(); 
         const playerIndex = getCurrentPlayer();
         turnInfo.textContent = `${players[playerIndex].name}はサイコロを振ってください`;
-        setCanRoll(true);       // ← サイコロに触れていい
-        setCanJudgeDice(false); // ← 出目判定はまだダメ！
+        setCanRoll(true);       // サイコロに触れていい
+        setCanJudgeDice(false); // 出目判定はまだダメ！
       });
     });
 
@@ -197,10 +207,8 @@ export async function startGameApp() {
   });
 
   window.addEventListener("resize", () => {
-    if (!camera || !renderer) return;
-    camera.aspect = canvas.clientWidth / canvas.clientHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+    if (!camera || !renderer || !scene) return;
+    resizeCanvasToFit(canvas, camera, renderer, scene);
   });
 }
 

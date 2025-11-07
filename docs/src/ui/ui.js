@@ -22,8 +22,9 @@ export function setupPlayers(count, gameScreen, playerNames) {
     // 位置ずらしの計算（3人ずつ段組み）
     const column = i % 3; // 横方向（最大3人）
     const row = Math.floor(i / 3); // 縦方向（段数）
-    const offsetX = column * 22; // 横に22pxずつずらす
-    const offsetY = row * 22;    // 縦に22pxずつずらす
+    const cellSize = startCell.offsetWidth; // 60px など
+    const offsetX = column * (cellSize * 0.33); // 33%ずらす
+    const offsetY = row * (cellSize * 0.33);
 
     piece.style.left = offsetX + "px";
     piece.style.top = offsetY + "px";
@@ -138,4 +139,24 @@ function showRanking() {
   ).join("\n");
 
   alert(message);
+}
+
+//お椀エリアの出現
+export function showBowlArea() {
+  const bowl = document.getElementById('bowlArea');
+  bowl.classList.remove('hidden');
+  bowl.classList.add('show');
+}
+
+//お椀エリアの非表示
+export function hideBowlArea() {
+  const bowl = document.getElementById('bowlArea');
+  bowl.classList.remove('show');
+  bowl.classList.add('hidden');
+}
+
+//出目表示
+export function showDiceResult(value) {
+  const resultDisplay = document.getElementById('dice-result');
+  resultDisplay.textContent = `出目：${value}`;
 }

@@ -38,9 +38,3 @@ export function init3DDice({
 
   return { diceMesh, diceBody, scene, renderer, camera };
 }
-
-function updatePlayerTurnUI(currentPlayerIndex) {
-  const name = playerNames[currentPlayerIndex];
-  const ui = document.getElementById("turnDisplay");
-  ui.textContent = `次は ${name} の番です`;
-}

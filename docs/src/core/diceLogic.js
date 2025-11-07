@@ -18,8 +18,3 @@ export function getDiceValueFromRotation(quaternion) {
   }
   return null;
 }
-
-function nextTurn() {
-  currentPlayerIndex = (currentPlayerIndex + 1) % playerNames.length;
-  updatePlayerTurnUI(currentPlayerIndex);
-}

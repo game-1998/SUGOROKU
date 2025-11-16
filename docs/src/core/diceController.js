@@ -25,7 +25,6 @@ export function setupDiceController({
     const intersects = raycaster.intersectObject(diceMesh);
     if (intersects.length > 0 || pointerIsNearDice(pointer, diceMesh, camera)) {
       diceBody.setCollisionFlags(diceBody.getCollisionFlags() | 2); // ← ここで初めてON！
-      console.log("[pointerdown] キネマティックON");
       isHolding = true;
       isDraggingRef.value = true;
       diceStopped = false;
@@ -45,8 +44,6 @@ export function setupDiceController({
   });
 
   canvas.addEventListener("pointermove", (event) => {
-    console.log("[pointermove] isDraggingRef.value =", isDraggingRef.value);
-
     if (!isDraggingRef.value || !isHolding) return;
     const rect = canvas.getBoundingClientRect();
     pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -55,7 +52,6 @@ export function setupDiceController({
     const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -5);
     const intersectPoint = new THREE.Vector3();
     raycaster.ray.intersectPlane(plane, intersectPoint);
-    console.log("[pointermove] 指位置:", intersectPoint.x, intersectPoint.z);
 
     diceMesh.position.set(intersectPoint.x, 5, intersectPoint.z);
     // 物理ボディも追従させる
@@ -72,9 +68,7 @@ export function setupDiceController({
   });
 
   canvas.addEventListener("pointerup", (e) => {
-    console.log("[pointerup] isDraggingRef.value =", isDraggingRef.value);
     if (!isDraggingRef.value || !isHolding) {
-        console.warn("[pointerup] スキップされました（ドラッグしてない）");
         return;
     }
 
@@ -84,7 +78,6 @@ export function setupDiceController({
 
     diceBody.setCollisionFlags(diceBody.getCollisionFlags() & ~2); // キネマティック解除
     diceBody.setActivationState(Ammo.ACTIVE_TAG); // 物理演算再開
-    console.log("[pointerup] キネマティック解除 & 物理演算再開");
 
     isHolding = false;
     isDraggingRef.value = false;
@@ -99,7 +92,6 @@ export function setupDiceController({
 
     diceBody.setWorldTransform(transform);
     diceBody.getMotionState().setWorldTransform(transform);
-    console.log("[pointerup] transform更新:", diceMesh.position.x, diceMesh.position.y, diceMesh.position.z);
 
     diceBody.setActivationState(Ammo.ACTIVE_TAG); // 物理演算再開
     
@@ -124,7 +116,6 @@ export function setupDiceController({
           diceBody.setActivationState(Ammo.ACTIVE_TAG);
           diceBody.activate();
           setCanJudgeDice(true);
-          console.log("[pointerup] canJudgeDiceRef を true に設定しました");
         }, 0);
       }else {
         // 無回転落下（静止判定）
@@ -133,7 +124,6 @@ export function setupDiceController({
         diceBody.setActivationState(Ammo.ACTIVE_TAG);
         diceBody.activate();
         setCanJudgeDice(true);
-        console.log("[pointerup] 無回転落下（静止判定）");
       }
     }else {
       // タップとみなしてランダム回転＋落下
@@ -144,7 +134,6 @@ export function setupDiceController({
       diceBody.setActivationState(Ammo.ACTIVE_TAG);
       diceBody.activate();
       setCanJudgeDice(true);
-      console.log("[pointerup] タップでランダム回転落下");
     }
 
     const pointer = new THREE.Vector2(
@@ -165,16 +154,12 @@ export function setupDiceController({
 
   function animate() {
     requestAnimationFrame(animate);
-    //console.log("Before stepSimulation");
     physicsWorld.stepSimulation(1 / 60, 10);
-    //console.log("After stepSimulation");
 
     rigidBodies.forEach(obj => {
-      //console.log("Updating rigid body");
       if (obj.body === diceBody && isDraggingRef.value) return;
       const ms = obj.body.getMotionState();
       if (ms) {
-        //console.log("Motion state exists");
         ms.getWorldTransform(tmpTrans);
         const origin = tmpTrans.getOrigin();
         const rotation = tmpTrans.getRotation();

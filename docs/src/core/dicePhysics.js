@@ -1,9 +1,10 @@
 import { loadDiceFace } from './diceEnvironment.js';
+import { RoundedBoxGeometry } from '../libs/three/geometries/RoundedBoxGeometry.js';
 
 // サイコロを物理オブジェクトとして登録
 export function createDice(scene, physicsWorld, rigidBodies, loader) {
   const size = 1;
-  const diceGeometry = new THREE.BoxGeometry(size, size, size);
+  const diceGeometry = new RoundedBoxGeometry(size, size, size, 4, 0.2);
   const diceMaterials = [
     loadDiceFace("images/dice1.png", loader),
     loadDiceFace("images/dice6.png", loader),
@@ -27,6 +28,7 @@ export function createDice(scene, physicsWorld, rigidBodies, loader) {
   const motionState = new Ammo.btDefaultMotionState(transform);
   const rbInfo = new Ammo.btRigidBodyConstructionInfo(mass, motionState, shape, localInertia);
   const diceBody = new Ammo.btRigidBody(rbInfo);
+  diceBody.setRestitution(1); // 反発係数
   physicsWorld.addRigidBody(diceBody);
 
   rigidBodies.push({ mesh: dice, body: diceBody });

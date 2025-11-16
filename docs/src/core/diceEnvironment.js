@@ -114,6 +114,7 @@ export function createDiceEnvironment({ canvas, loader, physicsWorld, rigidBodie
     transform.setOrigin(new Ammo.btVector3(0, 0, 0));
     const motionState = new Ammo.btDefaultMotionState(transform);
     const body = new Ammo.btRigidBody(new Ammo.btRigidBodyConstructionInfo(0, motionState, shape, new Ammo.btVector3(0, 0, 0)));
+    body.setRestitution(0.6); // 反発係数
     physicsWorld.addRigidBody(body);
   }
 
@@ -127,7 +128,11 @@ export function loadDiceFace(path, loader) {
   texture.center.set(0.5, 0.5);
   texture.rotation = 0;
   texture.needsUpdate = true;
-  return new THREE.MeshStandardMaterial({ map: texture });
+  return new THREE.MeshStandardMaterial({
+    map: texture,
+    roughness: 0.4,      // やや光沢あり
+    metalness: 0.1       // 環境光を反射
+  });
 }
 
 function isValid(v) {

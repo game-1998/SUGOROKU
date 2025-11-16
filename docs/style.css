@@ -18,7 +18,7 @@ h1 {
 
 /*ゲーム開始ボタン*/
 #startGame {
-  display: block;
+  display: none;
   margin: 20px auto; /* 上下に余白＋中央寄せ */
   text-align: center;
 }
@@ -91,16 +91,38 @@ h2 {
   box-sizing: border-box; /* paddingを含めて100vhに収める */
   overflow-y: scroll;
 }
+svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* スタートマス */
+.cell.start {
+  background-color: #e0e0e0;
+  font-size: 1.2em;
+  color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-image: none;
+  border-radius: 0%;
+  border: 3px solid #000000; /* 好きな色で縁取り */
+}
+
+.cell.start .cellText{
+  font-weight: bold;
+}
 
 .cell {
   position: absolute;
   width: clamp(50px, 10vw, 120px);
   aspect-ratio: 2 / 3;
-  background-image: url('./images/card.png');
+  background-image: url('./images/card.webp');
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
-  border-radius: 8px;
+  border-radius: 9% / 6%;
   font-size: clamp(12px, 3vw, 18px);
   color: #333;
   text-align: center;
@@ -109,27 +131,167 @@ h2 {
   justify-content: center;
 }
 
+/* ゴールマス */
+.cell.goal {
+  background: radial-gradient(circle at center,
+    #f4c542 0%,   /* 中心は金色 */
+    #ff6f61 90%,  /* 中間は朱赤 */
+    #c00 100%     /* 外側は濃い赤 */
+  );
+  clip-path: polygon(
+    50% 1%, 58% 20%, 72% 8%, 75% 30%,
+    100% 35%, 80% 50%, 98% 68%, 75% 70%,
+    75% 90%, 58% 80%, 50% 99%, 42% 80%,
+    30% 90%, 25% 70%, 0% 65%, 20% 50%,
+    3% 30%, 26% 30%, 25% 5%, 42% 20%
+  );
+  border: 3px solid gold;
+  animation: flash 1.8s infinite;
+  color: white;
+  font-weight: bold;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes flash {
+  0% {
+    background: radial-gradient(circle at center,
+      rgba(255, 135, 0, 1) 0%,   /* 再び強い光 */
+      rgba(255, 145, 0, 1) 50%,  
+      rgba(255, 180, 0, 1) 100%
+    );
+  }
+  33% {
+    background: radial-gradient(circle at center,
+      rgba(255, 180, 0, 1) 0%,   /* 中心が消える */
+      rgba(255, 215, 0, 1) 40%,  /* 中間も弱くなる */
+      rgba(255, 215, 0, 1) 70%      /* 外側は透明 */
+    );
+  }
+  66% {
+    background: radial-gradient(circle at center,
+      rgba(255, 145, 0, 1) 0%,   /* 再び強い光 */
+      rgba(255, 180, 0, 1) 40%,  
+      rgba(255, 215, 0, 1) 70%
+    );
+  }
+  100% {
+    background: radial-gradient(circle at center,
+      rgba(255, 135, 0, 1) 0%,   /* 再び強い光 */
+      rgba(255, 145, 0, 1) 50%,  
+      rgba(255, 180, 0, 1) 100%
+    );
+  }
+}
+
+.cell.goal .cellText{
+  font-weight: bold;
+}
+
 /* セル同士をつなぐ道 */
 #pathLayer {
   position: absolute;
   top: 0;
   left: 0;
+  width: 100%;
+
   pointer-events: none;
   z-index: 0;
 }
 
 /* 複数プレイヤーのコマ（共通スタイル） */
 .playerPiece {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
   position: absolute;
   transition: all 0.3s ease;
   z-index: 10;
-  color: white;
   font-size: 12px;
   text-align: center;
   line-height: 20px;
+  transition: transform 0.3s ease; /* ← 移動を滑らかに */
+}
+
+.pieceImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain; /* はみ出し防止 */
+}
+
+/* プレイヤー名の入力欄 */
+.playerInputRow {
+  display: flex;
+  justify-content: center; /* 横方向中央揃え */
+  align-items: center;         /* 縦方向中央揃え */
+  gap: 2rem;                 /* 列間の余白を少しだけ */
+  margin-top: 20px;
+  margin-bottom: 20px;
+  font-weight: bold;
+}
+
+.headerRow {
+  margin-top: 40px;
+}
+
+.playerInputRow input[type="text"],
+.headerCellPlayername {
+  width: 12rem;       /* プレイヤー名列の幅を統一 */
+  text-align: center;
+}
+
+.headerCellPlayername {
+  padding: 0 4px; /* 上下0px、左右8px */
+}
+
+.pieceSelect,
+.headerCellPiece {
+  width: 64px;        /* コマ列の幅を統一 */
+  text-align: center;
+}
+
+.pieceSelect {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.piecePreview {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  background-color: rgb(185, 174, 181);
+  border-radius: 8px;
+}
+
+.piecePreview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.piecePopup {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgb(185, 174, 181);
+  border: 1px solid rgb(158, 92, 134);
+  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(5, 64px);
+  gap: 8px;
+  z-index: 1000;
+}
+
+.pieceOption {
+  width: 64px;
+  height: 64px;
+  cursor: pointer;
 }
 
 /* プレイヤー交代ボタン */
@@ -143,6 +305,10 @@ h2 {
   border-radius: 6px;
   cursor: pointer;
   margin-top: 20px;
+  visibility: hidden; /* 非表示だがスペースは保持 */
+}
+#nextPlayerButton.show {
+  visibility: visible;
 }
 
 #backToHomeButton {
@@ -177,3 +343,46 @@ h2 {
   justify-content: center;
 }
 
+/* コマにプレイヤー名を表示 */
+.nameBubble {
+  position: absolute;
+  bottom: 100%;        /* コマのすぐ上に配置 */
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fff;
+  color: #333;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 14px;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+/* 吹き出しの三角形 */
+.nameBubble::after {
+  content: "";
+  position: absolute;
+  top: 100%; /* 吹き出しの下端に配置 */
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: #fff transparent transparent transparent;
+}
+
+/* プレイヤー順 */
+#playerOrderDisplay {
+  position: fixed;          /* 画面に固定 */
+  top: 20%;                 /* 画面の縦中央 */
+  left: 50%;                /* 画面の横中央 */
+  transform: translate(-50%, -50%); /* 中央に揃える */
+  text-align: center;
+}
+
+
+
+.orderLabel {
+  font-weight: bold;       /* 太字 */
+  font-size: 1.2em;        /* 少し大きく */
+  margin-bottom: 0.5em;    /* ラベルと次の行の間に余白 */
+}

@@ -1,22 +1,22 @@
 import { rollDicePhysics, initPhysics, animate } from './core/physics.js';
 import { init3DDice } from './core/diceGraphics.js';
-import { setupPlayers, updateTurnDisplay, movePlayer, showBowlArea, hideBowlArea, showDiceResult } from './ui/ui.js';
-import { getState, setCanRoll, setCanJudgeDice, setCurrentPlayer, getCurrentPlayer, setPlayers, getPlayers } from './state/gameState.js';
+import { setupPlayers, updateTurnDisplay, movePlayer, showBowlArea, hideBowlArea, showDiceResult, showNameBubble } from './ui/ui.js';
+import { getState, setCanRoll, setCanJudgeDice, setCurrentPlayer, getCurrentPlayer, setPlayers, getPlayers, setTurnOrder, getTurnOrder } from './state/gameState.js';
 import { resizeCanvasToFit } from './utils/canvasUtils.js';
 import { generateBoard, updateCellPositions } from './board/board.js';
 
-
+let usedPieceIds = new Set();
+let selectedPieces = [];
+const playerPieces = new Map(); // プレイヤー番号 → コマDOM要素
 
 export async function startGameApp() {
   window.Ammo = Ammo;             // グローバルに渡す（他のファイルでも使えるように）
   setCanJudgeDice(false);
   setCanRoll(false);
-  setCurrentPlayer(0);
 
   // ホーム画面の要素を取得
   const startButton = document.getElementById("startGame");
   const homeScreen = document.getElementById("homeScreen");
- // const gameScreen = document.getElementById("gameScreen");
 
   // プレイ画面の要素を取得
   const resultElement = document.getElementById("dice-result");
@@ -28,39 +28,84 @@ export async function startGameApp() {
   let rigidBodies = [];
   let diceInit;
   let isDragging = false; // 指が触れている間 true
-
   let playerNames = [];
+  let orderedPieces;
 
   document.getElementById("playerCount").addEventListener("change", () => {
     const count = parseInt(document.getElementById("playerCount").value);
     const container = document.getElementById("playerNameInput");
     container.innerHTML = ""; // 既存の入力欄をクリア
+    
+    selectedPieces = new Array(count).fill(null);
+    usedPieceIds.clear();
+
+    // 見出し行を追加
+    const headerRow = document.createElement("div");
+    headerRow.className = "playerInputRow headerRow";
+
+    const nameHeader = document.createElement("div");
+    nameHeader.textContent = "プレイヤー名";
+    nameHeader.className = "headerCellPlayername";
+
+    const pieceHeader = document.createElement("div");
+    pieceHeader.textContent = "コマ";
+    pieceHeader.className = "headerCellPiece";
+
+    headerRow.appendChild(nameHeader);
+    headerRow.appendChild(pieceHeader);
+    container.appendChild(headerRow);
 
     for (let i = 0; i < count; i++) {
-      const label = document.createElement("label");
-      label.textContent = `プレイヤー${i + 1}の名前：`;
+      const row = document.createElement("div");
+      row.className = "playerInputRow";
+
       const input = document.createElement("input");
       input.type = "text";
       input.id = `player${i}`;
       input.placeholder = `プレイヤー${i + 1}`;
-      container.appendChild(label);
-      container.appendChild(input);
-      container.appendChild(document.createElement("br"));
+
+      const pieceSelect = document.createElement("div");
+      pieceSelect.className = "pieceSelect";
+      pieceSelect.dataset.playerIndex = i;
+
+      const preview = document.createElement("div");
+      preview.className = "piecePreview no-select";
+      preview.textContent = "？";
+
+      pieceSelect.appendChild(preview);
+      row.appendChild(input);
+      row.appendChild(pieceSelect);
+      container.appendChild(row);
     }
 
     container.style.display = "block";
 
-    const startButton = document.getElementById("startGame");
-    startButton.style.display = "block"; // ← 改行して表示
+    startButton.style.display = "block";
+  });
+
+  document.addEventListener("click", (e) => {
+    const select = e.target.closest(".pieceSelect");
+    if (!select) return;
+    const playerIndex = parseInt(select.dataset.playerIndex);
+    showPieceSelectionPopup(playerIndex, select);
   });
 
 
   document.getElementById("startGame").addEventListener("click", () => {
     const count = parseInt(document.getElementById("playerCount").value);
-    if (isNaN(count) || count < 2 || count > 7) {
-      alert("プレイヤー人数を選択してください（2〜7人）");
+    if (isNaN(count) || count < 2 || count > 6) {
+      alert("プレイヤー人数を選択してください（2〜6人）");
       document.getElementById("playerCount").focus(); // 🎯 選択欄にフォーカス
-      return; // 🎯 ゲーム開始処理を中断
+      return; // ゲーム開始処理を中断
+    }
+
+    // ここで駒選択チェックを追加
+    for (let i = 0; i < count; i++) {
+      if (selectedPieces[i] === null) {
+        alert(`プレイヤー${i + 1}の駒が未選択です！`);
+        return; // ゲーム開始処理を中断
+
+      }
     }
 
     playerNames = [];
@@ -69,7 +114,15 @@ export async function startGameApp() {
       playerNames.push(name);
     }
 
+    const originalPlayerNames = [...playerNames];
     shuffle(playerNames);
+    setTurnOrder([...playerNames]); // 順番を保存
+    setCurrentPlayer(playerNames[0]); // 最初のプレイヤーを名前で設定
+    orderedPieces = getTurnOrder().map(name => {
+      const index = originalPlayerNames.indexOf(name);
+      return selectedPieces[index];
+    });
+
 
     // ホーム画面を非表示
     document.getElementById("homeScreen").style.display = "none";
@@ -77,7 +130,8 @@ export async function startGameApp() {
     // 順番表示  
     const orderDisplay = document.getElementById("playerOrderDisplay");
     const orderText = document.getElementById("playerOrderText");
-    orderText.textContent = "プレイヤー順：\n" + playerNames.join(" → ");
+    orderText.innerHTML = `<div class="orderLabel">プレイヤー順</div>
+                          ${playerNames.map(name => `<div>${name}</div>`).join("↓")}`;
     orderDisplay.style.display = "block";
   });
 
@@ -102,96 +156,118 @@ export async function startGameApp() {
     window.addEventListener('resize', redraw);
     board.addEventListener('scroll', redraw);
 
-    nextPlayerButton = document.getElementById("nextPlayerButton");
-    turnInfo = document.getElementById("turnInfo");
-
-    const count = playerNames.length;
-
-    setupPlayers(count, gameScreen, playerNames);
-    updateTurnDisplay(getState().currentPlayer, turnInfo, nextPlayerButton);
-
-    const { physicsWorld } = initPhysics();
-
-    diceInit = init3DDice({
-      canvas,
-      physicsWorld,
-      rigidBodies,
-      loader,
-      canRollRef: {
-        get value() {
-          return getState().canRoll;
-        },
-        set value(v) {
-          setCanRoll(v);
-        }
-      },
-      canJudgeDiceRef: {
-        get value() {
-          return getState().canJudgeDice;
-        },
-        set value(v) {
-          setCanJudgeDice(v);
-        }
-      },
-      onDiceStop: (diceValue) => {
-        showDiceResult(diceValue); // 出目を表示
-
-        setTimeout(() => {
-          hideBowlArea(); // お椀を非表示
-
-          const updatedPlayer = movePlayer(diceValue, getCurrentPlayer(), (cp) => {
-            setCurrentPlayer(cp);
-          });
-
-          setCurrentPlayer(updatedPlayer);
-          updateTurnDisplay(updatedPlayer, turnInfo, nextPlayerButton);
-          nextPlayerButton.style.display = "block"; // 次のターンへ
-        }, 3000);
-      },
-      onPointerRelease: ({ isSwipe, dx, dy, pointer }) => {
-        // ここは空でもOK。diceGraphics.js側で使うために渡すだけ
-      },
-      isDraggingRef: {
-        get value() {
-          return isDragging;
-        },
-        set value(v) {
-          isDragging = v;
-        }
-      }
-    });
-
-    dice = diceInit.dice;
-    diceBody = diceInit.diceBody;
-    scene = diceInit.scene;
-    renderer = diceInit.renderer;
-    camera = diceInit.camera;
-
     setTimeout(() => {
-      resizeCanvasToFit(canvas, camera, renderer,scene);
-    }, 0);
+      nextPlayerButton = document.getElementById("nextPlayerButton");
+      nextPlayerButton.classList.add("show");
+      turnInfo = document.getElementById("turnInfo");
 
-    renderer.setPixelRatio(window.devicePixelRatio);
+      const count = playerNames.length;
 
-    animate(renderer, scene, camera, rigidBodies, physicsWorld); // 毎フレーム更新
+      setupPlayers(count, gameScreen, getTurnOrder(), orderedPieces);
+      updateTurnDisplay(getState().currentPlayer, turnInfo, nextPlayerButton);
+
+      // コマにイベントを付与
+      document.querySelectorAll(".playerPiece").forEach(piece => {
+        const playerName = piece.dataset.playerName; // 事前にdata属性で名前を持たせておく
+        piece.addEventListener("click", () => {
+          showNameBubble(piece, playerName);
+        });
+      });
+
+      // 違う場所をクリックしたら吹き出し削除
+      document.addEventListener("click", (e) => {
+        // コマをクリックした場合は何もしない
+        if (e.target.closest(".playerPiece")) return;
+
+        // 吹き出しを全部削除
+        document.querySelectorAll(".nameBubble").forEach(bubble => bubble.remove());
+      });
+
+      const { physicsWorld } = initPhysics();
+
+      diceInit = init3DDice({
+        canvas,
+        physicsWorld,
+        rigidBodies,
+        loader,
+        canRollRef: {
+          get value() {
+            return getState().canRoll;
+          },
+          set value(v) {
+            setCanRoll(v);
+          }
+        },
+        canJudgeDiceRef: {
+          get value() {
+            return getState().canJudgeDice;
+          },
+          set value(v) {
+            setCanJudgeDice(v);
+          }
+        },
+        onDiceStop: async (diceValue) => {
+          showDiceResult(diceValue); // 出目を表示
+
+          setTimeout(async() => {
+            hideBowlArea(); // お椀を非表示
+
+            const updatedPlayerName = await movePlayer(diceValue, getCurrentPlayer(), (nextName) => {
+              setCurrentPlayer(nextName);
+            });
+
+            setCurrentPlayer(updatedPlayerName);
+
+            const players = getPlayers();
+            updateTurnDisplay(updatedPlayerName, turnInfo, nextPlayerButton);
+
+            nextPlayerButton.classList.add("show");
+          }, 1500);
+        },
+        onPointerRelease: ({ isSwipe, dx, dy, pointer }) => {
+          // ここは空でもOK。diceGraphics.js側で使うために渡すだけ
+        },
+        isDraggingRef: {
+          get value() {
+            return isDragging;
+          },
+          set value(v) {
+            isDragging = v;
+          }
+        }
+      });
+
+      dice = diceInit.dice;
+      diceBody = diceInit.diceBody;
+      scene = diceInit.scene;
+      renderer = diceInit.renderer;
+      camera = diceInit.camera;
+
+      setTimeout(() => {
+        resizeCanvasToFit(canvas, camera, renderer,scene);
+      }, 0);
+
+      renderer.setPixelRatio(window.devicePixelRatio);
+
+      animate(renderer, scene, camera, rigidBodies, physicsWorld); // 毎フレーム更新
 
       // ボタンを押したらサイコロを振れるようにする
       nextPlayerButton.addEventListener("click", () => {
-        nextPlayerButton.style.display = "none";
+        nextPlayerButton.classList.remove("show");
 
         showBowlArea(); //お椀エリアの表示
         requestAnimationFrame(() => {
           resizeCanvasToFit(canvas, camera, renderer, scene);
         });
         
-        const players = getPlayers(); 
-        const playerIndex = getCurrentPlayer();
-        turnInfo.textContent = `${players[playerIndex].name}はサイコロを振ってください`;
+        const currentPlayerName = getCurrentPlayer();
+        turnInfo.textContent = `${currentPlayerName}はサイコロを振ってください`;
+
         setCanRoll(true);       // サイコロに触れていい
         setCanJudgeDice(false); // 出目判定はまだダメ！
       });
     });
-
+  }, 0);    
   const backToHomeButton = document.getElementById("backToHomeButton");
 
   backToHomeButton.addEventListener("click", () => {
@@ -212,10 +288,68 @@ export async function startGameApp() {
   });
 }
 
-//プレイヤーの順番をシャッフル
+// プレイヤーの順番をシャッフル
 function shuffle(array) {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [array[i], array[j]] = [array[j], array[i]];
   }
+}
+
+// コマの一覧表示
+function showPieceSelectionPopup(playerIndex, targetElement) {
+  const popup = document.createElement("div");
+  popup.className = "piecePopup";
+
+  for (let i = 0; i < 10; i++) {
+    const img = document.createElement("img");
+    img.src = `images/piece${i + 1}.webp`;
+    img.className = "pieceOption";
+    img.dataset.pieceId = i;
+
+    if (usedPieceIds.has(i)) {
+      img.style.opacity = "0.4";
+      img.style.pointerEvents = "none";
+    }
+
+    img.addEventListener("click", () => {
+      const prev = selectedPieces[playerIndex];
+      if (prev !== null) usedPieceIds.delete(prev);
+
+      selectedPieces[playerIndex] = i;
+      usedPieceIds.add(i);
+
+      const preview = document.querySelector(`.pieceSelect[data-player-index="${playerIndex}"] .piecePreview`);
+      preview.innerHTML = `<img src="images/piece${i + 1}.webp" />`;
+      preview.classList.remove("no-select");
+
+      popup.remove();
+    });
+
+    popup.appendChild(img);
+  }
+
+  document.body.appendChild(popup);
+
+  // --- 位置をプレイヤー行の中央に揃える ---
+  const rect = targetElement.getBoundingClientRect();
+  popup.style.position = "absolute";
+  popup.style.top = `${rect.top + window.scrollY + rect.height / 2 - popup.offsetHeight / 2}px`;
+
+  // ポップアップ内クリックは外側判定に伝播させない
+  popup.addEventListener("click", e => e.stopPropagation());
+
+  // --- 外側クリックで閉じる処理 ---
+  function handleOutsideClick(event) {
+    if (!popup.contains(event.target)) {
+      closePopup();
+    }
+  }
+
+  function closePopup() {
+    popup.remove();
+    document.removeEventListener("click", handleOutsideClick);
+  }
+
+  document.addEventListener("click", handleOutsideClick);
 }

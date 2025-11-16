@@ -1,6 +1,7 @@
 const state = {
-  currentPlayer: 0,
+  currentPlayer: "",
   players: [],
+  turnOrder: [],
   canRoll: false,
   canJudgeDice: false
 };
@@ -9,8 +10,8 @@ export function getState() {
   return state;
 }
 
-export function setCurrentPlayer(index) {
-  state.currentPlayer = index;
+export function setCurrentPlayer(name) {
+  state.currentPlayer = name;
 }
 
 export function setCanRoll(value) {
@@ -31,4 +32,13 @@ export function setPlayers(playerList) {
 
 export function getPlayers() {
   return state.players;
+}
+
+
+export function setTurnOrder(order) {
+  state.turnOrder = order;
+}
+
+export function getTurnOrder() {
+  return state.turnOrder;
 }

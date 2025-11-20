@@ -8,11 +8,16 @@ import { generateBoard, updateCellPositions } from './board/board.js';
 let usedPieceIds = new Set();
 let selectedPieces = [];
 const playerPieces = new Map(); // プレイヤー番号 → コマDOM要素
+let nextPlayerButton;
+let turnInfo;
 
 export async function startGameApp() {
   window.Ammo = Ammo;             // グローバルに渡す（他のファイルでも使えるように）
   setCanJudgeDice(false);
   setCanRoll(false);
+
+  // コマ画像の事前読み込み
+  preloadPieceImages();
 
   // ホーム画面の要素を取得
   const startButton = document.getElementById("startGame");
@@ -22,8 +27,6 @@ export async function startGameApp() {
   const resultElement = document.getElementById("dice-result");
   const loader = new THREE.TextureLoader();
   const canvas = document.getElementById("threeCanvas")
-  let nextPlayerButton;
-  let turnInfo;
   let dice, diceBody, scene, renderer, camera;
   let rigidBodies = [];
   let diceInit;
@@ -135,32 +138,14 @@ export async function startGameApp() {
     orderDisplay.style.display = "block";
   });
 
-  document.getElementById("confirmOrderButton").addEventListener("click", () => {
-    // 順番表示を非表示
-    document.getElementById("playerOrderDisplay").style.display = "none";
-    
-    //ゲーム画面を表示
-    const gameScreen = document.getElementById("gameScreen");
-    gameScreen.classList.remove("hidden");
-    gameScreen.classList.add('show');
+  document.getElementById("confirmOrderButton").addEventListener("click", async () => {
+    const curtain = document.getElementById("curtain");
+    await playCurtainTransition(curtain);
 
-    // 盤面生成（座標付き）
-    const MAX_CELL_INDEX = 20;
-    const { cells, board, svg } = generateBoard(MAX_CELL_INDEX);
-
-    function redraw() {
-      requestAnimationFrame(() => updateCellPositions(cells, board, svg));
-    }
-
-    redraw();
-    window.addEventListener('resize', redraw);
-    board.addEventListener('scroll', redraw);
+    window.addEventListener('resize', () => redraw(cells, board, svg));
+    board.addEventListener('scroll', () => redraw(cells, board, svg));
 
     setTimeout(() => {
-      nextPlayerButton = document.getElementById("nextPlayerButton");
-      nextPlayerButton.classList.add("show");
-      turnInfo = document.getElementById("turnInfo");
-
       const count = playerNames.length;
 
       setupPlayers(count, gameScreen, getTurnOrder(), orderedPieces);
@@ -352,4 +337,53 @@ function showPieceSelectionPopup(playerIndex, targetElement) {
   }
 
   document.addEventListener("click", handleOutsideClick);
+}
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function playCurtainTransition(curtain) {
+  // 幕を降ろす
+  curtain.classList.add("drop");
+  await wait(800);
+
+  // 順番表示を非表示
+  document.getElementById("playerOrderDisplay").style.display = "none";
+
+  // ゲーム画面を表示
+  const gameScreen = document.getElementById("gameScreen");
+  gameScreen.classList.remove("hidden");
+  gameScreen.classList.add("show");
+  nextPlayerButton = document.getElementById("nextPlayerButton");
+  nextPlayerButton.classList.add("show");
+  turnInfo = document.getElementById("turnInfo");
+  updateTurnDisplay(getState().currentPlayer, turnInfo, nextPlayerButton);
+
+  // 盤面生成（座標付き）
+  const MAX_CELL_INDEX = 20;
+  const { cells, board, svg } = generateBoard(MAX_CELL_INDEX);
+  redraw(cells, board, svg);
+
+  // 幕を揺らす
+  //curtain.classList.remove("drop");
+  //curtain.classList.add("swing");
+  await wait(1200); // 揺れ時間
+
+  // 幕を上げる
+  curtain.classList.remove("drop");
+  //curtain.classList.remove("swing");
+  curtain.classList.add("lift");
+  await wait(1000); // 上がり時間
+}
+
+function redraw(cells, board, svg) {
+  requestAnimationFrame(() => updateCellPositions(cells, board, svg));
+}
+
+function preloadPieceImages() {
+  for (let i = 1; i <= 10; i++) {
+    const img = new Image();
+    img.src = `images/piece${i}.webp`;
+  }
 }

@@ -42,7 +42,7 @@ export function setupPlayers(count, gameScreen, playerNames, selectedPieces) {
 // 最初のプレイヤー表示
 export function updateTurnDisplay(playerName, turnInfo, nextPlayerButton) {
   turnInfo.textContent = `次は ${playerName} の番です`;
-  nextPlayerButton.classList.add("visible");
+  nextPlayerButton.classList.add("show");
 }
 
 // コマを移動する関数
@@ -65,57 +65,66 @@ export async function movePlayer(diceValue, currentPlayerName, updateTurnDisplay
   // 範囲チェック
   if (targetPos > MAX_CELL_INDEX) targetPos = MAX_CELL_INDEX;
   if (targetPos < 0) targetPos = 0;
+  const finalCell = cells[targetPos];
 
-  // 出目の数だけ一歩ずつ滑らかに移動
-  for (let i = currentPos; i < targetPos; i++) {
-    const { positions, paths } = updateCellPositions(Array.from(cells), board, svg);
-    const path = paths[i]; // i番目のpathを取得
-    const endLength = path.getTotalLength();
-    const speed = 0.2; // pixel per ms
-    const duration = endLength / speed;
-
-    if (!path || !path.ownerSVGElement) {
-      console.warn(`path[${i}] が無効です。ownerSVGElement:`, path?.ownerSVGElement);
-      continue; // または break、resolve、return など状況に応じて
-    }
-
-    // アニメ開始前に駒を board 直下へ移動
-    if (piece.parentElement !== board) {
-      // パスの始点座標を取得
-      const startPoint = path.getPointAtLength(0);
-      const svg = path.ownerSVGElement;
-      const pt = svg.createSVGPoint();
-      pt.x = startPoint.x;
-      pt.y = startPoint.y;
-
-      // SVG座標をスクリーン座標に変換
-      const screenPt = pt.matrixTransform(svg.getScreenCTM());
-      const boardRect = board.getBoundingClientRect();
-
-      const boardX = screenPt.x - boardRect.left - piece.offsetWidth/2 + board.scrollLeft;
-      const boardY = screenPt.y - boardRect.top - piece.offsetHeight/2 + board.scrollTop;
-
-      // 駒をパス始点に配置（中心補正なし）
-      piece.style.left = boardX + "px";
-      piece.style.top  = boardY + "px";
-      board.appendChild(piece);
-    }
-
-    await new Promise(r => requestAnimationFrame(r)); // レイアウト確定を待つ
-
-    await movePieceAlongPath(piece, path, board, 0, endLength, duration);
-
-    // 移動完了後にセル内のslotへ再配置
-    if (i === targetPos - 1){
-      const finalCell = cells[targetPos];
-      positionPiece(piece, finalCell);
-    }
-    else{
-      await delay(100);
-    }
-    players[playerIndex].position = i + 1;
+  // --- ここで特殊処理を分岐 ---
+  if (diceValue === -1) {
+    await animateMinusOne(piece, targetPos, finalCell);
   }
+  else {
+    // 出目の数だけ一歩ずつ滑らかに移動
+    for (let i = currentPos; i < targetPos; i++) {
+      const { positions, paths } = updateCellPositions(Array.from(cells), board, svg);
+      const path = paths[i]; // i番目のpathを取得
+      const endLength = path.getTotalLength();
+      const speed = 0.2; // pixel per ms
+      const duration = endLength / speed;
 
+      if (!path || !path.ownerSVGElement) {
+        console.warn(`path[${i}] が無効です。ownerSVGElement:`, path?.ownerSVGElement);
+        continue; // または break、resolve、return など状況に応じて
+      }
+
+      // アニメ開始前に駒を board 直下へ移動
+      if (piece.parentElement !== board) {
+        // パスの始点座標を取得
+        const startPoint = path.getPointAtLength(0);
+        const svg = path.ownerSVGElement;
+        const pt = svg.createSVGPoint();
+        pt.x = startPoint.x;
+        pt.y = startPoint.y;
+
+        // SVG座標をスクリーン座標に変換
+        const screenPt = pt.matrixTransform(svg.getScreenCTM());
+        const boardRect = board.getBoundingClientRect();
+
+        const boardX = screenPt.x - boardRect.left - piece.offsetWidth/2 + board.scrollLeft;
+        const boardY = screenPt.y - boardRect.top - piece.offsetHeight/2 + board.scrollTop;
+
+        // 駒をパス始点に配置（中心補正なし）
+        piece.style.left = boardX + "px";
+        piece.style.top  = boardY + "px";
+        board.appendChild(piece);
+      }
+
+      await new Promise(r => requestAnimationFrame(r)); // レイアウト確定を待つ
+
+      await movePieceAlongPath(piece, path, board, 0, endLength, duration);
+
+      // 移動完了後にセル内のslotへ再配置
+      if (i === targetPos - 1){
+        positionPiece(piece, finalCell);
+      }
+      else{
+        await delay(100);
+      }
+      players[playerIndex].position = i + 1;
+    }
+  }
+    
+  players[playerIndex].position = targetPos;
+  setPlayers(players);
+      
   // ゴール判定
   if (players[playerIndex].position === MAX_CELL_INDEX && !gameEnded) {
     gameEnded = true;
@@ -132,7 +141,7 @@ export async function movePlayer(diceValue, currentPlayerName, updateTurnDisplay
       }, 500);
     });
   }
-  setPlayers(players);
+  //setPlayers(players);
 
   // 次のプレイヤー名を取得
   const turnOrder = getTurnOrder();
@@ -207,6 +216,7 @@ function positionPiece(piece, cell) {
 
   // 既存のスロットを取得
   const usedSlots = Array.from(cell.querySelectorAll(".playerPiece"))
+    .filter(p => p !== piece) // ← 自分自身を除外
     .map(p => parseInt(p.dataset.slot))
     .filter(n => !isNaN(n));
 
@@ -281,4 +291,33 @@ export function showNameBubble(pieceElement, playerName) {
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function animateMinusOne(piece, targetPos, finalCell) {
+  return new Promise(resolve => {
+    setTimeout(() => {
+      // 一度上に消す
+      piece.classList.add("disappear");    
+    
+      setTimeout(() => {
+        // 新しいマスに配置
+        positionPiece(piece, finalCell);
+
+        setTimeout(() => {
+          // 2回 requestAnimationFrame で確実に反映
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              piece.classList.remove("disappear");
+              piece.classList.add("drop");
+            });
+          });
+
+          setTimeout(() => {
+            piece.classList.remove("drop");
+            resolve();
+          },700);
+        }, 700);
+      }, 650);
+    }, 400);
+  });
 }

@@ -10,16 +10,46 @@ body {
   background-color: #f9c5d5;
 }
 
+#homeScreen {
+  padding-bottom: 7vh; /* ← ボタンの余白をホーム画面の一部にする */
+}
+
 /* タイトル */
-h1 {
-  font-size: 24px;
-  margin-bottom: 20px;
+.game-title {
+  font-family: 'Noto Sans JP', sans-serif;
+  font-size: 2rem;
+  max-width: 95vw; /* 画面幅の95%までに制限 */
+  text-align: center;
+  word-break: keep-all; /* 単語途中で改行しない */
+  color: #fff;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.4);
+  animation: pulse 2.5s ease-in-out infinite;
+  margin-top: 5vh;
+  margin-bottom: 5vh;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.07); }
+  100% { transform: scale(1); }
+}
+
+.emoji-beer {
+  display: inline-block;
+  font-size: 2.3rem;
+  text-align: center;
+}
+
+.emoji-dice {
+  display: inline-block;
+  font-size: 1.8rem;
+  text-align: center;
 }
 
 /*ゲーム開始ボタン*/
 #startGame {
   display: none;
-  margin: 20px auto; /* 上下に余白＋中央寄せ */
+  margin: 5vh auto; /* 上下に余白＋中央寄せ */
   text-align: center;
 }
 
@@ -204,12 +234,21 @@ svg {
 /* 複数プレイヤーのコマ（共通スタイル） */
 .playerPiece {
   position: absolute;
-  transition: all 0.3s ease;
   z-index: 10;
   font-size: 12px;
   text-align: center;
   line-height: 20px;
-  transition: transform 0.3s ease; /* ← 移動を滑らかに */
+  transition: transform 0.6s ease-out, opacity 0.6s ease-out;
+}
+
+.playerPiece.disappear {
+  transform: translateY(-50%);
+  opacity: 0;
+}
+
+.playerPiece.drop {
+  transform: translateY(0);
+  opacity: 1;
 }
 
 .pieceImage {
@@ -296,7 +335,6 @@ svg {
 
 /* プレイヤー交代ボタン */
 #nextPlayerButton {
-  margin: 20px auto;
   padding: 10px 20px;
   font-size: 16px;
   background-color: #4CAF50;
@@ -304,11 +342,16 @@ svg {
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  margin-top: 20px;
+  margin-top: 5vh;
+  margin-bottom: 3vh;
   visibility: hidden; /* 非表示だがスペースは保持 */
 }
 #nextPlayerButton.show {
   visibility: visible;
+}
+
+#turnInfo {
+  margin: 2vh auto;
 }
 
 #backToHomeButton {
@@ -343,6 +386,49 @@ svg {
   justify-content: center;
 }
 
+/* 幕での画面遷移 */
+.curtain {
+  position: fixed;
+  top: -120%;
+  left: -3%;
+  width: 106%;
+  height: 103%;
+  background: url("./images/curtain.png") center no-repeat;
+  background-size: 100% 100%;
+  z-index: 999;
+}
+
+@keyframes dropCurtain {
+  0% { top: -120%; }
+  100% { top: 0; }
+}
+
+@keyframes swingCurtain {
+  0%   { transform: rotateZ(0deg) translateX(0); }
+  20%  { transform: rotateZ(1.5deg) translateX(2%); }
+  40%  { transform: rotateZ(-1.5deg) translateX(-2%); }
+  60%  { transform: rotateZ(1deg) translateX(1%); }
+  80%  { transform: rotateZ(-1deg) translateX(-1%); }
+  100% { transform: rotateZ(0deg) translateX(0);}
+}
+
+@keyframes curtainLift {
+  0% { top: 0%; }
+  100% { top: -120%; }
+}
+.curtain.drop {
+  animation: dropCurtain 0.8s ease-out forwards;
+}
+
+.curtain.swing {
+  top: 0%;
+  animation: swingCurtain 1.2s ease-in-out 2;
+}
+
+.curtain.lift {
+  animation: curtainLift 2s linear forwards;
+}
+
 /* コマにプレイヤー名を表示 */
 .nameBubble {
   position: absolute;
@@ -373,9 +459,9 @@ svg {
 /* プレイヤー順 */
 #playerOrderDisplay {
   position: fixed;          /* 画面に固定 */
-  top: 20%;                 /* 画面の縦中央 */
+  top: 15%;                 /* 画面の縦中央 */
   left: 50%;                /* 画面の横中央 */
-  transform: translate(-50%, -50%); /* 中央に揃える */
+  transform: translate(-50%, 0%); /* 中央に揃える */
   text-align: center;
 }
 
@@ -384,5 +470,5 @@ svg {
 .orderLabel {
   font-weight: bold;       /* 太字 */
   font-size: 1.2em;        /* 少し大きく */
-  margin-bottom: 0.5em;    /* ラベルと次の行の間に余白 */
+  margin-bottom: 1em;    /* ラベルと次の行の間に余白 */
 }

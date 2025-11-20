@@ -73,7 +73,7 @@ export function updateCellPositions(cells, board, svg){
       cell.style.width = `${cellWidth * 5}px`;
       cell.style.height = `${cellWidth}px`;
       cell.style.left = `${(boardWidth - cellWidth * 5) / 2}px`;
-      cell.style.top = `22px`; // 道の上に浮かせる（調整可）
+      cell.style.top = `18px`; // 道の上に浮かせる（調整可）
     } else if (isGoal){
       // ゴールセルのサイズと位置
       cell.style.width = `${cellWidth * 3}px`;

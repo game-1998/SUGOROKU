@@ -4,19 +4,16 @@
   <meta charset="UTF-8">
   <title>双六ゲーム</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="preload" href="images/piece1.webp" as="image">
-  <link rel="preload" href="images/piece2.webp" as="image">
-  <link rel="preload" href="images/piece3.webp" as="image">
-  <link rel="preload" href="images/piece4.webp" as="image">
-  <link rel="preload" href="images/piece5.webp" as="image">
-  <link rel="preload" href="images/piece6.webp" as="image">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 
 <body>
   <!-- ホーム画面 -->
   <div id="homeScreen">
-    <h1>双六ゲームへようこそ！</h1>
+    <h1 class="game-title">
+      飲んで！進んで！ <span class="emoji-beer">🍻</span><br>
+      ゴールまで！！ <span class="emoji-dice">🎲</span>
+    </h1>
     <label for="playerCount">プレイヤー人数（2〜6人）:</label>
     <select id="playerCount">
       <option value="" disabled selected>選択してください</option>
@@ -47,10 +44,9 @@
     <div id="dice-result">出目：？</div>
   </div>
   
+  <div id="curtain" class="curtain"></div>
   <!-- プレイ画面（最初は非表示） -->
   <div id="gameScreen" class="hidden">
-    <h2>ゲーム画面</h2>
-
     <!-- プレイヤー交代ボタン -->
     <button id="nextPlayerButton">次のプレイヤーに交代</button>
     <p id="turnInfo"></p>
@@ -84,13 +80,13 @@
       // DOM がすでに読み込まれているか確認
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', async () => {
-          const { startGameApp } = await import('./src/main.js?v=20251116'); // ver.(1/2か所目)
+          const { startGameApp } = await import('./src/main.js?v=20251120'); // ver.(1/2か所目)
           startGameApp();
         });
       } else {
         // すでに読み込み済みなら即実行
         (async () => {
-          const { startGameApp } = await import('./src/main.js?v=20251116'); // ver.(2/2か所目)
+          const { startGameApp } = await import('./src/main.js?v=20251120'); // ver.(2/2か所目)
           startGameApp();
         })();
       }

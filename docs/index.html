@@ -37,14 +37,35 @@
     <button id="confirmOrderButton">OK!</button>
   </div>
 
+  <!-- 設定ボタン -->
+  <button id="settingsBtn" class="settings-button hidden">
+    ⚙️
+  </button>
+  <!-- 設定パネル -->
+  <div id="settingsPanel" class="hidden">
+    <div id="playerList"></div>
+    <button id="addPlayerBtn">＋ プレイヤー追加</button><br>
+    <button id="removePlayerBtn">－ プレイヤー削除</button>
+  </div>
+
   <!-- お椀エリア -->
   <div id="bowlArea" class="hidden">
     <canvas id="threeCanvas"></canvas>
     <!-- 出目の表示 -->
     <div id="dice-result">出目：？</div>
   </div>
-  
+
+  <!-- イベントカード表示エリア -->
+  <div id="eventCard" class="hidden">
+    <div class="card-inner">
+      <div class="card-front"></div>
+      <div class="card-back"></div>
+    </div>
+  </div>
+
+  <!-- 幕の表示 -->
   <div id="curtain" class="curtain"></div>
+
   <!-- プレイ画面（最初は非表示） -->
   <div id="gameScreen" class="hidden">
     <!-- プレイヤー交代ボタン -->
@@ -80,13 +101,13 @@
       // DOM がすでに読み込まれているか確認
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', async () => {
-          const { startGameApp } = await import('./src/main.js?v=20251120'); // ver.(1/2か所目)
+          const { startGameApp } = await import('./src/main.js?v=20251123'); // ver.(1/2か所目)
           startGameApp();
         });
       } else {
         // すでに読み込み済みなら即実行
         (async () => {
-          const { startGameApp } = await import('./src/main.js?v=20251120'); // ver.(2/2か所目)
+          const { startGameApp } = await import('./src/main.js?v=20251123'); // ver.(2/2か所目)
           startGameApp();
         })();
       }

@@ -53,6 +53,81 @@ body {
   text-align: center;
 }
 
+/* 設定ボタン */
+.settings-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  z-index: 100;
+}
+
+#settingsPanel {
+  position: absolute;
+  top: 50px;
+  right: 10px;
+  background: #fff;
+  border: 1px solid #ccc;
+  padding: 5px 10px;
+  z-index: 100;
+}
+
+#addPlayerBtn, #removePlayerBtn {
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+.removePlayerPopup {
+  background: white;
+  border: 2px solid #333;
+  padding: 10px 30px;
+  z-index: 1000;
+  position: relative;
+}
+
+.removePlayerHeader {
+  font-size: 16px;
+  font-weight: bold;
+  margin-top: 5px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.removePlayerClose {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  color: rgb(189, 0, 0);
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.removePlayerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 10px auto;
+  width: 200px;
+}
+
+.removePlayerName {
+  font-size: 18px;
+}
+
+.removePlayerBtn {
+  border: 1px solid #333;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+
+
 /* お椀エリア（サイコロを振る場所） */
 #bowlArea {
   position: fixed;
@@ -83,6 +158,57 @@ body {
   background-color: #ccc; /* 一時的に背景色を付けて確認しやすく */
   touch-action: none;
   display: block;
+}
+
+/* イベントカード */
+#eventCard {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60vw;
+  height: 90vw;
+  perspective: 1000px;
+  z-index: 2000;
+}
+
+.card-inner {
+  width: 100%;
+  height: 100%;
+  transition: transform 1s;
+  transform-style: preserve-3d;
+}
+
+.card-inner.flipped {
+  transform: rotateY(180deg);
+}
+
+.card-front, .card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.card-front {
+  background-image: url('./images/card.webp'); /* 共通セル画像 */
+  background-size: cover;
+  background-position: center;
+  border-radius: 9% / 6%;
+}
+
+
+.card-back {
+  background: #fff;
+  transform: rotateY(180deg);
+  white-space: pre-line;
 }
 
 /* 出目の表示 */
@@ -464,8 +590,6 @@ svg {
   transform: translate(-50%, 0%); /* 中央に揃える */
   text-align: center;
 }
-
-
 
 .orderLabel {
   font-weight: bold;       /* 太字 */

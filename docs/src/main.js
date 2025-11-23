@@ -1,15 +1,16 @@
 import { rollDicePhysics, initPhysics, animate } from './core/physics.js';
 import { init3DDice } from './core/diceGraphics.js';
-import { setupPlayers, updateTurnDisplay, movePlayer, showBowlArea, hideBowlArea, showDiceResult, showNameBubble } from './ui/ui.js';
-import { getState, setCanRoll, setCanJudgeDice, setCurrentPlayer, getCurrentPlayer, setPlayers, getPlayers, setTurnOrder, getTurnOrder } from './state/gameState.js';
+import { setupPlayers, updateTurnDisplay, movePlayer, showBowlArea, hideBowlArea, showDiceResult, showNameBubble, handleRemovePlayer } from './ui/ui.js';
+import { getState, setCanRoll, setCanJudgeDice, setCurrentPlayer, getCurrentPlayer, setPlayers, getPlayers, assignEventsToCells, logEventDistribution, addPlayer, removePlayer, getTurnOrder, setTurnOrder, getPieces } from './state/gameState.js';
 import { resizeCanvasToFit } from './utils/canvasUtils.js';
 import { generateBoard, updateCellPositions } from './board/board.js';
 
 let usedPieceIds = new Set();
 let selectedPieces = [];
 const playerPieces = new Map(); // プレイヤー番号 → コマDOM要素
-let nextPlayerButton;
-let turnInfo;
+let nextPlayerButton, turnInfo;
+let cells, board, svg;
+const MAX_CELL_INDEX = 50;
 
 export async function startGameApp() {
   window.Ammo = Ammo;             // グローバルに渡す（他のファイルでも使えるように）
@@ -32,7 +33,6 @@ export async function startGameApp() {
   let diceInit;
   let isDragging = false; // 指が触れている間 true
   let playerNames = [];
-  let orderedPieces;
 
   document.getElementById("playerCount").addEventListener("change", () => {
     const count = parseInt(document.getElementById("playerCount").value);
@@ -111,21 +111,22 @@ export async function startGameApp() {
       }
     }
 
-    playerNames = [];
+    // プレイヤー名と駒をペアにする
+    const players = [];
     for (let i = 0; i < count; i++) {
       const name = document.getElementById(`player${i}`).value || `プレイヤー${i + 1}`;
-      playerNames.push(name);
+      players.push({ name, pieceId: selectedPieces[i], position: 0, orderIndex: i });
     }
 
-    const originalPlayerNames = [...playerNames];
-    shuffle(playerNames);
-    setTurnOrder([...playerNames]); // 順番を保存
-    setCurrentPlayer(playerNames[0]); // 最初のプレイヤーを名前で設定
-    orderedPieces = getTurnOrder().map(name => {
-      const index = originalPlayerNames.indexOf(name);
-      return selectedPieces[index];
-    });
+    const shuffledPlayers = shuffle(players);
 
+    // プレイヤーを state に保存（順番はシャッフル済みの配列そのまま）
+    setPlayers(shuffledPlayers);
+
+    setTurnOrder(shuffledPlayers.map(p => p.name));
+
+    // 最初のプレイヤーを設定
+    setCurrentPlayer(shuffledPlayers[0].name);
 
     // ホーム画面を非表示
     document.getElementById("homeScreen").style.display = "none";
@@ -134,7 +135,7 @@ export async function startGameApp() {
     const orderDisplay = document.getElementById("playerOrderDisplay");
     const orderText = document.getElementById("playerOrderText");
     orderText.innerHTML = `<div class="orderLabel">プレイヤー順</div>
-                          ${playerNames.map(name => `<div>${name}</div>`).join("↓")}`;
+                          ${getPlayers().map(p => `<div>${p.name}</div>`).join("↓")}`;
     orderDisplay.style.display = "block";
   });
 
@@ -142,22 +143,56 @@ export async function startGameApp() {
     const curtain = document.getElementById("curtain");
     await playCurtainTransition(curtain);
 
+    // 設定ボタンのイベントリスナー登録
+    const settingsBtn = document.getElementById("settingsBtn");
+    settingsBtn.addEventListener("click", () => {
+      const panel = document.getElementById("settingsPanel");
+      panel.classList.toggle("hidden");
+    });
+
+    // ゲーム開始後に表示
+    settingsBtn.classList.remove("hidden");
+
+    // プレイヤー追加
+    document.getElementById("addPlayerBtn").addEventListener("click", () => {
+      // 名前入力と駒選択UIを出す（例: promptや専用フォーム）
+      const name = prompt("プレイヤー名を入力してください");
+      if (!name) return;
+
+      // 駒選択は既存の showPieceSelectionPopup を流用可能
+      // ここでは仮にランダムで選ぶ例
+      const pieceId = Math.floor(Math.random() * 10);
+
+      const newPlayer = addPlayer(name, pieceId);
+      // UI再構築
+      setupPlayers(getPlayers().length, gameScreen, getTurnOrder(), getPieces());
+      updateTurnDisplay(getCurrentPlayer(), turnInfo, nextPlayerButton);
+    });
+
+    // プレイヤー削除
+    document.getElementById("removePlayerBtn").addEventListener("click", () => {
+      showRemovePlayerPopup();
+    });
+
     window.addEventListener('resize', () => redraw(cells, board, svg));
     board.addEventListener('scroll', () => redraw(cells, board, svg));
 
     setTimeout(() => {
-      const count = playerNames.length;
-
-      setupPlayers(count, gameScreen, getTurnOrder(), orderedPieces);
+      setupPlayers(getPlayers().length, gameScreen, getTurnOrder(), getPieces());
       updateTurnDisplay(getState().currentPlayer, turnInfo, nextPlayerButton);
 
       // コマにイベントを付与
-      document.querySelectorAll(".playerPiece").forEach(piece => {
-        const playerName = piece.dataset.playerName; // 事前にdata属性で名前を持たせておく
-        piece.addEventListener("click", () => {
-          showNameBubble(piece, playerName);
-        });
+      document.addEventListener("click", (e) => {
+        const piece = e.target.closest(".playerPiece");
+        if (!piece) return;
+
+        const pieceId = Number(piece.dataset.pieceId);
+        const player = getPlayers().find(p => p.pieceId === pieceId);
+        if (player) {
+          showNameBubble(piece, player.name);
+        }
       });
+
 
       // 違う場所をクリックしたら吹き出し削除
       document.addEventListener("click", (e) => {
@@ -197,7 +232,7 @@ export async function startGameApp() {
           setTimeout(async() => {
             hideBowlArea(); // お椀を非表示
 
-            const updatedPlayerName = await movePlayer(diceValue, getCurrentPlayer(), (nextName) => {
+            const updatedPlayerName = await movePlayer(diceValue, getCurrentPlayer().name, (nextName) => {
               setCurrentPlayer(nextName);
             });
 
@@ -205,8 +240,6 @@ export async function startGameApp() {
 
             const players = getPlayers();
             updateTurnDisplay(updatedPlayerName, turnInfo, nextPlayerButton);
-
-            nextPlayerButton.classList.add("show");
           }, 1500);
         },
         onPointerRelease: ({ isSwipe, dx, dy, pointer }) => {
@@ -244,9 +277,6 @@ export async function startGameApp() {
         requestAnimationFrame(() => {
           resizeCanvasToFit(canvas, camera, renderer, scene);
         });
-        
-        const currentPlayerName = getCurrentPlayer();
-        turnInfo.textContent = `${currentPlayerName}はサイコロを振ってください`;
 
         setCanRoll(true);       // サイコロに触れていい
         setCanJudgeDice(false); // 出目判定はまだダメ！
@@ -275,10 +305,10 @@ export async function startGameApp() {
 
 // プレイヤーの順番をシャッフル
 function shuffle(array) {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
-  }
+  return array
+    .map(value => ({ value, sort: Math.random() }))
+    .sort((a, b) => a.sort - b.sort)
+    .map(({ value }) => value);
 }
 
 // コマの一覧表示
@@ -299,11 +329,11 @@ function showPieceSelectionPopup(playerIndex, targetElement) {
 
     img.addEventListener("click", () => {
       const prev = selectedPieces[playerIndex];
+
       if (prev !== null) usedPieceIds.delete(prev);
 
       selectedPieces[playerIndex] = i;
       usedPieceIds.add(i);
-
       const preview = document.querySelector(`.pieceSelect[data-player-index="${playerIndex}"] .piecePreview`);
       preview.innerHTML = `<img src="images/piece${i + 1}.webp" />`;
       preview.classList.remove("no-select");
@@ -355,14 +385,16 @@ async function playCurtainTransition(curtain) {
   const gameScreen = document.getElementById("gameScreen");
   gameScreen.classList.remove("hidden");
   gameScreen.classList.add("show");
+  
   nextPlayerButton = document.getElementById("nextPlayerButton");
   nextPlayerButton.classList.add("show");
   turnInfo = document.getElementById("turnInfo");
   updateTurnDisplay(getState().currentPlayer, turnInfo, nextPlayerButton);
 
   // 盤面生成（座標付き）
-  const MAX_CELL_INDEX = 20;
-  const { cells, board, svg } = generateBoard(MAX_CELL_INDEX);
+  ({ cells, board, svg } = generateBoard(MAX_CELL_INDEX));
+  assignEventsToCells(cells, MAX_CELL_INDEX);
+  logEventDistribution(cells);
   redraw(cells, board, svg);
 
   // 幕を揺らす
@@ -387,3 +419,59 @@ function preloadPieceImages() {
     img.src = `images/piece${i}.webp`;
   }
 }
+
+function showRemovePlayerPopup() {
+  const popup = document.createElement("div");
+  popup.className = "removePlayerPopup";
+
+  // --- 上部に指示文を追加 ---
+  const header = document.createElement("div");
+  header.className = "removePlayerHeader";
+  header.textContent = "削除するプレイヤーを選択してください";
+  popup.appendChild(header);
+
+  // --- 右上に × ボタンを追加 ---
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "removePlayerClose";
+  closeBtn.textContent = "×";
+  closeBtn.addEventListener("click", () => {
+    popup.remove();
+  });
+  popup.appendChild(closeBtn);
+
+  const players = getPlayers();
+
+  players.forEach(player => {
+    const row = document.createElement("div");
+    row.className = "removePlayerRow";
+
+    const nameDiv = document.createElement("div");
+    nameDiv.textContent = player.name;
+    nameDiv.className = "removePlayerName";
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.textContent = "削除";
+    deleteBtn.className = "removePlayerBtn";
+
+    const orderedPieces = getPieces();
+    const usedPieceIds = getPlayers().map(p => p.pieceId);
+
+    deleteBtn.addEventListener("click", () => {
+      handleRemovePlayer(player.name, orderedPieces, usedPieceIds);
+      popup.remove();
+    });
+
+    row.appendChild(nameDiv);
+    row.appendChild(deleteBtn);
+    popup.appendChild(row);
+  });
+
+  document.body.appendChild(popup);
+
+  // 中央に配置
+  popup.style.position = "fixed";
+  popup.style.top = "50%";
+  popup.style.left = "50%";
+  popup.style.transform = "translate(-50%, -50%)";
+}
+

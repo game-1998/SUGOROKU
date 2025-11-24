@@ -114,6 +114,15 @@ export function addPlayer(name, pieceId) {
   const newPlayer = { name, pieceId, position: insertPos, orderIndex: players.length };
   setPlayers([...players, newPlayer]);
 
+  // ターン順序に追加
+  const order = getTurnOrder();
+  order.push(name);
+  setTurnOrder(order);
+
+  // 駒リストに追加
+  const pieces = getPieces();
+  pieces.push(pieceId);
+
   return newPlayer;
 }
 

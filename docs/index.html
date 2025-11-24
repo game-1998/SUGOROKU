@@ -43,7 +43,7 @@
   </button>
   <!-- 設定パネル -->
   <div id="settingsPanel" class="hidden">
-    <div id="playerList"></div>
+    <button id="closeSettingsBtn" class="panel-close">×</button>
     <button id="addPlayerBtn">＋ プレイヤー追加</button><br>
     <button id="removePlayerBtn">－ プレイヤー削除</button>
   </div>
@@ -68,6 +68,17 @@
 
   <!-- プレイ画面（最初は非表示） -->
   <div id="gameScreen" class="hidden">
+    <!-- プレイヤー追加モーダル -->
+    <div id="addPlayerModal" class="modal hidden">
+      <div class="modal-content">
+        <h2>プレイヤー追加</h2>
+        <div id="addPlayerForm"></div>
+        <button id="confirmAddPlayer">決定</button>
+      </div>
+    </div>
+
+    <div id="gamePlayerList"></div>
+
     <!-- プレイヤー交代ボタン -->
     <button id="nextPlayerButton">次のプレイヤーに交代</button>
     <p id="turnInfo"></p>
@@ -101,13 +112,13 @@
       // DOM がすでに読み込まれているか確認
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', async () => {
-          const { startGameApp } = await import('./src/main.js?v=20251123'); // ver.(1/2か所目)
+          const { startGameApp } = await import('./src/main.js?v=20251124'); // ver.(1/2か所目)
           startGameApp();
         });
       } else {
         // すでに読み込み済みなら即実行
         (async () => {
-          const { startGameApp } = await import('./src/main.js?v=20251123'); // ver.(2/2か所目)
+          const { startGameApp } = await import('./src/main.js?v=20251124'); // ver.(2/2か所目)
           startGameApp();
         })();
       }

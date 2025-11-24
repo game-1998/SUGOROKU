@@ -251,23 +251,23 @@ function positionPiece(piece, cell) {
   const row = Math.floor(slot / groupSize);
 
   // サイズ調整（コマをセルにフィットさせる）
-  piece.style.width = `${cellSize * 0.7}px`;  // 70%サイズなど調整可能
-  piece.style.height = `${cellSize * 0.7}px`;
+  piece.style.width = `${cellSize * 0.76}px`;  // 70%サイズなど調整可能
+  piece.style.height = `${cellSize * 0.76}px`;
   let offsetX, offsetY;
   
   // 配置位置（オフセット）
   if(isStart){
     const totalWidth = cell.offsetWidth;
-    const pieceWidth = cellSize * 0.7;
+    const pieceWidth = cellSize * 0.76;
     const spacing = (totalWidth - pieceWidth * maxSlots) / (maxSlots + 1); // 両端に余白
 
     offsetX = spacing * (slot + 1) + pieceWidth * slot;
-    offsetY = (cell.offsetHeight - cellSize * 0.7) / 2;
+    offsetY = (cell.offsetHeight - cellSize * 0.76) / 2;
   }else{
     if (column === 0){
-      offsetX = -cellSize * 0.1;
+      offsetX = -cellSize * 0.13;
     }else{
-      offsetX = cellSize * 0.4;
+      offsetX = cellSize * 0.37;
     }
     offsetY = row * (cellSize * 0.75);
   }

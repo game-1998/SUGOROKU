@@ -150,24 +150,59 @@ export async function startGameApp() {
       panel.classList.toggle("hidden");
     });
 
+    // バツ印ボタンで閉じる
+    const closeSettingsBtn = document.getElementById("closeSettingsBtn");
+    closeSettingsBtn.addEventListener("click", () => {
+      const panel = document.getElementById("settingsPanel");
+      panel.classList.add("hidden");
+    });
+
     // ゲーム開始後に表示
     settingsBtn.classList.remove("hidden");
 
     // プレイヤー追加
+    // プレイヤー追加ボタン → モーダル表示
     document.getElementById("addPlayerBtn").addEventListener("click", () => {
-      // 名前入力と駒選択UIを出す（例: promptや専用フォーム）
-      const name = prompt("プレイヤー名を入力してください");
-      if (!name) return;
+      const modal = document.getElementById("addPlayerModal");
+      const form = document.getElementById("addPlayerForm");
 
-      // 駒選択は既存の showPieceSelectionPopup を流用可能
-      // ここでは仮にランダムで選ぶ例
-      const pieceId = Math.floor(Math.random() * 10);
+      // 現在の人数をカウント
+      const currentCount = getPlayers().length;
+      const newIndex = currentCount;
 
-      const newPlayer = addPlayer(name, pieceId);
-      // UI再構築
-      setupPlayers(getPlayers().length, gameScreen, getTurnOrder(), getPieces());
-      updateTurnDisplay(getCurrentPlayer(), turnInfo, nextPlayerButton);
+      // 入力行を生成してフォームに追加
+      form.innerHTML = ""; // 前回の内容をクリア
+      const newRow = createPlayerInputRow(newIndex);
+      form.appendChild(newRow);
+
+      modal.classList.remove("hidden"); // 表示
     });
+
+    // 決定ボタン → プレイヤーを追加してモーダルを閉じる
+    document.getElementById("confirmAddPlayer").addEventListener("click", () => {
+      const modal = document.getElementById("addPlayerModal");
+      const newIndex = getPlayers().length;
+
+      const name = document.getElementById(`player${newIndex}`).value || `プレイヤー${newIndex+1}`;
+      const pieceId = selectedPieces[newIndex]; // 選択された駒
+
+      if (pieceId === null) {
+        alert("駒を選択してください！");
+        return;
+      }
+
+      // プレイヤーを state に追加
+      addPlayer(name, pieceId);
+
+      // UI更新
+      setupPlayers(getPlayers().length, gameScreen, getTurnOrder(), getPieces());
+      updateTurnDisplay(getState().currentPlayer, turnInfo, nextPlayerButton);
+
+      // モーダルを閉じる
+      modal.classList.add("hidden");
+    });
+
+
 
     // プレイヤー削除
     document.getElementById("removePlayerBtn").addEventListener("click", () => {
@@ -427,7 +462,7 @@ function showRemovePlayerPopup() {
   // --- 上部に指示文を追加 ---
   const header = document.createElement("div");
   header.className = "removePlayerHeader";
-  header.textContent = "削除するプレイヤーを選択してください";
+  header.textContent = "削除するプレイヤーを\n選択してください";
   popup.appendChild(header);
 
   // --- 右上に × ボタンを追加 ---
@@ -475,3 +510,26 @@ function showRemovePlayerPopup() {
   popup.style.transform = "translate(-50%, -50%)";
 }
 
+function createPlayerInputRow(index) {
+  const row = document.createElement("div");
+  row.className = "playerInputRow";
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.id = `player${index}`;
+  input.placeholder = `プレイヤー${index + 1}`;
+
+  const pieceSelect = document.createElement("div");
+  pieceSelect.className = "pieceSelect";
+  pieceSelect.dataset.playerIndex = index;
+
+  const preview = document.createElement("div");
+  preview.className = "piecePreview no-select";
+  preview.textContent = "？";
+
+  pieceSelect.appendChild(preview);
+  row.appendChild(input);
+  row.appendChild(pieceSelect);
+
+  return row;
+}

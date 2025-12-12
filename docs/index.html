@@ -112,13 +112,13 @@
       // DOM がすでに読み込まれているか確認
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', async () => {
-          const { startGameApp } = await import('./src/main.js?v=20251124'); // ver.(1/2か所目)
+          const { startGameApp } = await import('./src/main.js?v=20251212'); // ver.(1/2か所目)
           startGameApp();
         });
       } else {
         // すでに読み込み済みなら即実行
         (async () => {
-          const { startGameApp } = await import('./src/main.js?v=20251124'); // ver.(2/2か所目)
+          const { startGameApp } = await import('./src/main.js?v=20251212'); // ver.(2/2か所目)
           startGameApp();
         })();
       }

@@ -1,4 +1,4 @@
-import { getPlayers, setPlayers, getCurrentPlayer, getTurnOrder, setCurrentPlayer, removePlayer, getLeader, setTurnOrder, getPieces, normalizeTurnIndex, getState } from '../state/gameState.js';
+import { getPlayers, setPlayers, getCurrentPlayer, getTurnOrder, setCurrentPlayer, removePlayer, getLeader, setTurnOrder, getPieces, normalizeTurnIndex, getState, applyEvent, endTurn } from '../state/gameState.js';
 import { setPiece, getPiece, clearPieces } from '../utils/pieceRegistry.js';
 import { movePieceAlongPath } from "../core/pathMotion.js";
 import { updateCellPositions } from '../board/board.js';
@@ -20,16 +20,27 @@ export function setupPlayers(count, gameScreen, playerNames, pieceIds) {
     piece.id = `piece${i}`;
     piece.dataset.playerName = name;
 
+    // 既存プレイヤー情報を取得
+    const existingPlayer = getPlayers().find(p => p.name === name);
+
+    // 駒IDは既存があれば引き継ぐ、なければ新規
+    const pieceId = existingPlayer ? existingPlayer.pieceId : pieceIds[i];
+    piece.dataset.pieceId = pieceId;
+
+    // 位置も既存があれば引き継ぐ
+    const position = existingPlayer ? existingPlayer.position : 0;
+
+    // サイコロ効果も引き継ぐ（なければ初期値）
+    const diceBonus = existingPlayer ? existingPlayer.diceBonus : 0;
+    const effectMultiplier = existingPlayer ? existingPlayer.effectMultiplier : 1;
+
     // コマ画像を表示
     const img = document.createElement("img");
-    const pieceId = pieceIds[i];
-
     img.src = `images/piece${pieceId + 1}.webp`;
     img.className = "pieceImage";
     piece.appendChild(img);
 
-    const existingPlayer = getPlayers().find(p => p.name === name);
-    const position = existingPlayer ? existingPlayer.position : 0;
+    piece.dataset.pieceId = pieceId;
 
     positionPiece(piece, cells[position]);
 
@@ -43,7 +54,9 @@ export function setupPlayers(count, gameScreen, playerNames, pieceIds) {
         showNameBubble(piece, playerName);
       });
     });
-    players.push({ name, position, pieceId });
+
+    // プレイヤー情報を保存
+    players.push({ name, position, pieceId, diceBonus, effectMultiplier });
   }
 
   setPlayers(players);
@@ -57,9 +70,7 @@ export function updateTurnDisplay(playerName, turnInfo, nextPlayerButton) {
 
 // コマを移動する関数
 export async function movePlayer(diceValue, currentPlayerName, updateTurnDisplay) {
-  console.log("[movePlayer] 開始:", currentPlayerName, "dice:", diceValue);
   const players = getPlayers();
-  console.log("[movePlayer] players:", players);
   const cells = document.querySelectorAll(".cell");
   const board = document.getElementById("board");
   const MAX_CELL_INDEX = cells.length - 1;
@@ -80,7 +91,7 @@ export async function movePlayer(diceValue, currentPlayerName, updateTurnDisplay
   const finalCell = cells[targetPos];
 
   // --- ここで特殊処理を分岐 ---
-  if (diceValue === -1) {
+  if (diceValue <= -1) {
     await animateMinusOne(piece, targetPos, finalCell);
   }
   else {
@@ -134,6 +145,7 @@ export async function movePlayer(diceValue, currentPlayerName, updateTurnDisplay
     }
   }
     
+  endTurn();
   players[playerIndex].position = targetPos;
   setPlayers(players);
       
@@ -156,23 +168,19 @@ export async function movePlayer(diceValue, currentPlayerName, updateTurnDisplay
 
   // 次のプレイヤー名を取得
   const turnOrder = getTurnOrder();
-  console.log("[movePlayer] turnOrder:", turnOrder);
   const currentIndex = turnOrder.indexOf(currentPlayerName);
-  console.log("[movePlayer] currentIndex:", currentIndex);
+
   const nextPlayerName = turnOrder[(currentIndex + 1) % turnOrder.length];
-  console.log("[movePlayer] 次のプレイヤー:", nextPlayerName);
 
-  setCurrentPlayer(nextPlayerName);
-  getState().currentTurnIndex = (currentIndex + 1) % turnOrder.length;
-
-  // 表示更新
-  //updateTurnDisplay(nextPlayerName, turnInfo, nextPlayerButton);
-
-  // イベントカードの表示
+    // イベントカードの表示
   const stoppedCell = cells[targetPos];
   if (stoppedCell.event) {
     showEventCard(stoppedCell.event);
   }
+
+  setCurrentPlayer(nextPlayerName);
+  getState().currentTurnIndex = (currentIndex + 1) % turnOrder.length;
+
   return nextPlayerName;
 }
 
@@ -211,10 +219,29 @@ export function showBowlArea() {
 }
 
 //お椀エリアの非表示
-export function hideBowlArea() {
+export function hideBowlArea(rigidBodies) {
   const bowl = document.getElementById('bowlArea');
   bowl.classList.remove('show');
   bowl.classList.add('hidden');
+  
+  rigidBodies.forEach(obj => {
+    if (obj._value === -1) {
+      // 落ちたサイコロだけリセット位置に戻す
+      obj.mesh.position.set(0, 5, 0);
+      obj.mesh.quaternion.set(0, 0, 0, 1);
+
+      const t = new Ammo.btTransform();
+      t.setIdentity();
+      t.setOrigin(new Ammo.btVector3(0, 5, 0));
+      t.setRotation(new Ammo.btQuaternion(0, 0, 0, 1));
+      obj.body.setWorldTransform(t);
+
+      setTimeout(() => {
+        obj.body.setLinearVelocity(new Ammo.btVector3(0, 0, 0));
+        obj.body.setAngularVelocity(new Ammo.btVector3(0, 0, 0));
+      }, 0);
+    }
+  });
 }
 
 //出目表示
@@ -358,6 +385,9 @@ function showEventCard(eventText) {
 
   card.classList.remove("hidden");
 
+  // イベント効果を適用
+  applyEvent(currentPlayer, eventText);
+
   // 少し遅れてめくる
   setTimeout(() => {
     inner.classList.add("flipped");
@@ -375,16 +405,12 @@ function showEventCard(eventText) {
 
 function resolveTargetPlayer(eventText, currentPlayerName, turnOrder) {
   const currentIndex = turnOrder.indexOf(currentPlayerName);
-  console.log("[resolveTargetPlayer] eventText:", eventText);
-  console.log("[resolveTargetPlayer] currentPlayerName:", currentPlayerName);
-  console.log("[resolveTargetPlayer] turnOrder:", turnOrder);
-  console.log("[resolveTargetPlayer] currentIndex:", currentIndex);
 
   if (eventText.startsWith("次の人")) {
-    return turnOrder[currentIndex];
+    return turnOrder[(currentIndex + 1) % turnOrder.length];
   }
   if (eventText.startsWith("前の人")) {
-    return turnOrder[(currentIndex - 2 + turnOrder.length) % turnOrder.length];
+    return turnOrder[(currentIndex - 1 + turnOrder.length) % turnOrder.length];
   }
   if (eventText.startsWith("先頭")) {
     return getLeader(getPlayers()).name;
@@ -392,47 +418,35 @@ function resolveTargetPlayer(eventText, currentPlayerName, turnOrder) {
   return null; // 対象なし
 }
 
-export function renderPlayerList(orderedPieces, usedPieceIds) {
-  const playerList = document.getElementById("playerList");
-  playerList.innerHTML = "";
-
-  const players = getPlayers(); // gameStateから取得
-  players.forEach((p) => {
-    const row = document.createElement("div");
-    row.className = "playerRow";
-
-    const nameDiv = document.createElement("div");
-    nameDiv.textContent = p.name;
-
-    const removeBtn = document.createElement("button");
-    removeBtn.textContent = "削除";
-    removeBtn.addEventListener("click", () => {
-      handleRemovePlayer(p.name, orderedPieces, usedPieceIds);
-    });
-
-    //row.appendChild(nameDiv);
-    //row.appendChild(removeBtn);
-    //playerList.appendChild(row);
-  });
-}
-
-export function handleRemovePlayer(name, orderedPieces, usedPieceIds) {
-  console.log("[handleRemovePlayer] 削除開始:", name);
+export function handleRemovePlayer(name, selectedPieces, usedPieceIds) {
+  // 削除対象プレイヤーを取得
+  const players = getPlayers();
+  const removedPlayer = players.find(p => p.name === name);
   // 実データ削除
   removePlayer(name);
+
+  // --- 駒の使用状態を解放 ---
+  if (removedPlayer) {
+    // usedPieceIds から削除
+    usedPieceIds.delete(removedPlayer.pieceId);
+    // selectedPieces の該当インデックスを null に
+    const playerIndex = players.findIndex(p => p.name === name);
+    if (playerIndex !== -1) {
+      selectedPieces[playerIndex] = null;
+      updatePreview(document.getElementById("gamePlayerList"), playerIndex, null);
+      updatePreview(document.getElementById("addPlayerForm"), playerIndex, null);
+    }
+  }
 
   // 順番を最新化
   const order = getPlayers().map(p => p.name);
   setTurnOrder(order);
-  console.log("[handleRemovePlayer] 新しい turnOrder:", order);
 
   // 現在のインデックスを正規化
   normalizeTurnIndex();
-  console.log("[handleRemovePlayer] currentTurnIndex:", getState().currentTurnIndex);
 
   // 現在プレイヤーが削除されていた場合、正規化後のインデックスのプレイヤーに差し替え
   const current = getCurrentPlayer();
-  console.log("[handleRemovePlayer] getCurrentPlayer:", current);
   if (current) setCurrentPlayer(current.name);
 
   // UI再構築（pieceId と名前のペアで）
@@ -442,4 +456,20 @@ export function handleRemovePlayer(name, orderedPieces, usedPieceIds) {
 
   // 吹き出し等の残骸はクリア（必要なら）
   document.querySelectorAll(".nameBubble").forEach(b => b.remove());
+}
+
+// コマ選択のプレビュー更新
+export function updatePreview(container, playerIndex, pieceId) {
+  const preview = container.querySelector(
+    `.piecePreview[data-player-index="${playerIndex}"]`
+  );
+  if (!preview) return;
+
+  if (pieceId != null) {
+    preview.innerHTML = `<img src="images/piece${pieceId + 1}.webp" />`;
+    preview.classList.remove("no-select");
+  } else {
+    preview.textContent = "？";
+    preview.classList.add("no-select");
+  }
 }

@@ -1,3 +1,5 @@
+import { updateDiceFrame } from "./diceController.js";
+
 export function rollDicePhysics(diceBody, power = 10) {
   diceBody.activate();
   const force = new Ammo.btVector3(
@@ -42,26 +44,21 @@ export function initPhysics() {
 }
 
 // 毎フレーム物理演算を更新
-export function animate(renderer, scene, camera, rigidBodies, physicsWorld) {
+export function animate(renderer, scene, camera, physicsWorld, onDiceStop, canJudgeDiceRef) {
   function loop() {
     requestAnimationFrame(loop);
 
-    physicsWorld.stepSimulation(1 / 60, 10);
-
-    rigidBodies.forEach(obj => {
-      const ms = obj.body.getMotionState();
-      if (ms) {
-        const transform = new Ammo.btTransform();
-        ms.getWorldTransform(transform);
-        const origin = transform.getOrigin();
-        const rotation = transform.getRotation();
-        obj.mesh.position.set(origin.x(), origin.y(), origin.z());
-        obj.mesh.quaternion.set(rotation.x(), rotation.y(), rotation.z(), rotation.w());
-      }
+    // 毎フレームの更新処理を呼ぶ
+    updateDiceFrame({
+      physicsWorld,
+      scene,
+      camera,
+      renderer,
+      onDiceStop,
+      canJudgeDiceRef
     });
-
-  renderer.render(scene, camera);
+    renderer.render(scene, camera);
   }
-
+  
   loop(); // ← 毎フレーム更新開始
 }

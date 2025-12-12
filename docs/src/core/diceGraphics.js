@@ -16,8 +16,8 @@ export function init3DDice({
     scene,
     camera,
     renderer,
-    diceMesh,
-    diceBody
+    diceMeshes,
+    diceBodies
   } = createDiceEnvironment({ canvas, loader, physicsWorld, rigidBodies });
 
   setupDiceController({
@@ -25,8 +25,6 @@ export function init3DDice({
     scene,
     camera,
     renderer,
-    diceMesh,
-    diceBody,
     physicsWorld,
     rigidBodies,
     canRollRef,
@@ -36,5 +34,5 @@ export function init3DDice({
     isDraggingRef
   });
 
-  return { diceMesh, diceBody, scene, renderer, camera };
+  return { diceMeshes, diceBodies, scene, renderer, camera, canJudgeDiceRef, onDiceStop };
 }

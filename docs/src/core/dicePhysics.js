@@ -2,7 +2,7 @@ import { loadDiceFace } from './diceEnvironment.js';
 import { RoundedBoxGeometry } from '../libs/three/geometries/RoundedBoxGeometry.js';
 
 // サイコロを物理オブジェクトとして登録
-export function createDice(scene, physicsWorld, rigidBodies, loader) {
+export function createDice(scene, physicsWorld, loader) {
   const size = 1;
   const diceGeometry = new RoundedBoxGeometry(size, size, size, 4, 0.2);
   const diceMaterials = [
@@ -21,21 +21,19 @@ export function createDice(scene, physicsWorld, rigidBodies, loader) {
   transform.setIdentity();
   transform.setOrigin(new Ammo.btVector3(0, 7, 0)); // 高い位置から落とす
 
-  const mass = 1;
+  const mass = 10;
   const localInertia = new Ammo.btVector3(0, 0, 0);
   shape.calculateLocalInertia(mass, localInertia);
 
   const motionState = new Ammo.btDefaultMotionState(transform);
   const rbInfo = new Ammo.btRigidBodyConstructionInfo(mass, motionState, shape, localInertia);
   const diceBody = new Ammo.btRigidBody(rbInfo);
-  diceBody.setRestitution(1); // 反発係数
+  diceBody.setRestitution(0.9); // 反発係数
   physicsWorld.addRigidBody(diceBody);
-
-  rigidBodies.push({ mesh: dice, body: diceBody });
 
   diceBody.setActivationState(Ammo.DISABLE_DEACTIVATION);
 
-  return { dice, diceBody };
+  return { mesh: dice, body: diceBody };
 }
 
 // サイコロの静止判定

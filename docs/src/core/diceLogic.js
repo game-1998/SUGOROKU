@@ -1,20 +1,29 @@
 // 出目の判定
 export function getDiceValueFromRotation(quaternion) {
   const up = new THREE.Vector3(0, 1, 0);
-  const matrix = new THREE.Matrix4().makeRotationFromQuaternion(quaternion);
-  const directions = [
-    new THREE.Vector3(1, 0, 0),  // +X → 5
-    new THREE.Vector3(-1, 0, 0), // -X → 6
-    new THREE.Vector3(0, 1, 0),  // +Y → 3
-    new THREE.Vector3(0, -1, 0), // -Y → 4
-    new THREE.Vector3(0, 0, 1),  // +Z → 1
-    new THREE.Vector3(0, 0, -1), // -Z → 2
+
+  // サイコロの各面の法線（ローカル座標）
+  const faces = [
+    { value: 1, normal: new THREE.Vector3(1, 0, 0) },   // +X
+    { value: 6, normal: new THREE.Vector3(-1, 0, 0) },  // -X
+    { value: 3, normal: new THREE.Vector3(0, 1, 0) },   // +Y
+    { value: 4, normal: new THREE.Vector3(0, -1, 0) },  // -Y
+    { value: 2, normal: new THREE.Vector3(0, 0, 1) },   // +Z
+    { value: 5, normal: new THREE.Vector3(0, 0, -1) },  // -Z
   ];
 
-  for (let i = 0; i < directions.length; i++) {
-    const dir = directions[i].clone().applyMatrix4(matrix);
-    const dot = dir.dot(up);
-    if (dot > 0.95) return [1, 6, 3, 4, 2, 5][i];
-  }
-  return null;
+  let bestValue = null;
+  let bestDot = -Infinity;
+
+  faces.forEach(face => {
+    const worldNormal = face.normal.clone().applyQuaternion(quaternion);
+    const dot = worldNormal.dot(up); // 上向き度合い
+
+    if (dot > bestDot) {
+      bestDot = dot;
+      bestValue = face.value;
+    }
+  });
+
+  return bestValue;
 }

@@ -1,9 +1,10 @@
 import { rollDicePhysics, initPhysics, animate } from './core/physics.js';
 import { init3DDice } from './core/diceGraphics.js';
-import { setupPlayers, updateTurnDisplay, movePlayer, showBowlArea, hideBowlArea, showDiceResult, showNameBubble, handleRemovePlayer } from './ui/ui.js';
-import { getState, setCanRoll, setCanJudgeDice, setCurrentPlayer, getCurrentPlayer, setPlayers, getPlayers, assignEventsToCells, logEventDistribution, addPlayer, removePlayer, getTurnOrder, setTurnOrder, getPieces } from './state/gameState.js';
+import { setupPlayers, updateTurnDisplay, movePlayer, showBowlArea, hideBowlArea, showDiceResult, showNameBubble, handleRemovePlayer, updatePreview } from './ui/ui.js';
+import { getState, setCanRoll, setCanJudgeDice, setCurrentPlayer, getCurrentPlayer, setPlayers, getPlayers, assignEventsToCells, logEventDistribution, addPlayer, removePlayer, getTurnOrder, setTurnOrder, getPieces} from './state/gameState.js';
 import { resizeCanvasToFit } from './utils/canvasUtils.js';
 import { generateBoard, updateCellPositions } from './board/board.js';
+import { updateGrabbedDice } from './core/diceController.js';
 
 let usedPieceIds = new Set();
 let selectedPieces = [];
@@ -115,7 +116,14 @@ export async function startGameApp() {
     const players = [];
     for (let i = 0; i < count; i++) {
       const name = document.getElementById(`player${i}`).value || `プレイヤー${i + 1}`;
-      players.push({ name, pieceId: selectedPieces[i], position: 0, orderIndex: i });
+      players.push({
+        name,
+        pieceId: selectedPieces[i],
+        position: 0,
+        orderIndex: i,
+        diceBonus: 0, // 次ターンだけの追加サイコロ数（初期値0）
+        effectMultiplier: 1 // 効果倍率（通常1倍、2倍や4倍に拡張可能）
+      });
     }
 
     const shuffledPlayers = shuffle(players);
@@ -183,6 +191,10 @@ export async function startGameApp() {
       const modal = document.getElementById("addPlayerModal");
       const newIndex = getPlayers().length;
 
+      if (selectedPieces[newIndex] === undefined) {
+        selectedPieces[newIndex] = null;
+      }
+
       const name = document.getElementById(`player${newIndex}`).value || `プレイヤー${newIndex+1}`;
       const pieceId = selectedPieces[newIndex]; // 選択された駒
 
@@ -195,6 +207,10 @@ export async function startGameApp() {
       addPlayer(name, pieceId);
 
       // UI更新
+      updatePreview(document.getElementById("gamePlayerList"), newIndex, pieceId);
+      updatePreview(document.getElementById("addPlayerForm"), newIndex, pieceId);
+
+      const gameScreen = document.getElementById("gameScreen");
       setupPlayers(getPlayers().length, gameScreen, getTurnOrder(), getPieces());
       updateTurnDisplay(getState().currentPlayer, turnInfo, nextPlayerButton);
 
@@ -265,7 +281,7 @@ export async function startGameApp() {
           showDiceResult(diceValue); // 出目を表示
 
           setTimeout(async() => {
-            hideBowlArea(); // お椀を非表示
+            hideBowlArea(rigidBodies); // お椀を非表示
 
             const updatedPlayerName = await movePlayer(diceValue, getCurrentPlayer().name, (nextName) => {
               setCurrentPlayer(nextName);
@@ -275,7 +291,7 @@ export async function startGameApp() {
 
             const players = getPlayers();
             updateTurnDisplay(updatedPlayerName, turnInfo, nextPlayerButton);
-          }, 1500);
+          }, 3000);
         },
         onPointerRelease: ({ isSwipe, dx, dy, pointer }) => {
           // ここは空でもOK。diceGraphics.js側で使うために渡すだけ
@@ -302,20 +318,24 @@ export async function startGameApp() {
 
       renderer.setPixelRatio(window.devicePixelRatio);
 
-      animate(renderer, scene, camera, rigidBodies, physicsWorld); // 毎フレーム更新
+      animate(renderer, scene, camera, physicsWorld, diceInit.onDiceStop, diceInit.canJudgeDiceRef); // 毎フレーム更新
 
       // ボタンを押したらサイコロを振れるようにする
       nextPlayerButton.addEventListener("click", () => {
         nextPlayerButton.classList.remove("show");
 
+        // 必要なサイコロの数を出現
+        updateGrabbedDice(rigidBodies, getCurrentPlayer, physicsWorld);
+
         showBowlArea(); //お椀エリアの表示
         requestAnimationFrame(() => {
           resizeCanvasToFit(canvas, camera, renderer, scene);
         });
-
-        setCanRoll(true);       // サイコロに触れていい
-        setCanJudgeDice(false); // 出目判定はまだダメ！
+        setCanRoll(true);     // ターン全体で投げ許可
+        setCanJudgeDice(false);
       });
+      
+      
     });
   }, 0);    
   const backToHomeButton = document.getElementById("backToHomeButton");
@@ -369,9 +389,13 @@ function showPieceSelectionPopup(playerIndex, targetElement) {
 
       selectedPieces[playerIndex] = i;
       usedPieceIds.add(i);
-      const preview = document.querySelector(`.pieceSelect[data-player-index="${playerIndex}"] .piecePreview`);
-      preview.innerHTML = `<img src="images/piece${i + 1}.webp" />`;
-      preview.classList.remove("no-select");
+      const preview = targetElement.querySelector(`.pieceSelect[data-player-index="${playerIndex}"] .piecePreview`);
+      if (preview) {
+        preview.innerHTML = `<img src="images/piece${i + 1}.webp" />`;
+        preview.classList.remove("no-select");
+      } else {
+        console.warn("[select] preview not found for index", playerIndex);
+      }
 
       popup.remove();
     });
@@ -488,11 +512,8 @@ function showRemovePlayerPopup() {
     deleteBtn.textContent = "削除";
     deleteBtn.className = "removePlayerBtn";
 
-    const orderedPieces = getPieces();
-    const usedPieceIds = getPlayers().map(p => p.pieceId);
-
     deleteBtn.addEventListener("click", () => {
-      handleRemovePlayer(player.name, orderedPieces, usedPieceIds);
+      handleRemovePlayer(player.name, selectedPieces, usedPieceIds);
       popup.remove();
     });
 

@@ -1,6 +1,6 @@
 const state = {
   currentPlayer: "",
-  players: [], // { name, pieceId, position, orderIndex }
+  players: [], // { name, pieceId, position, orderIndex, diceBonus, effectMultiplier }
   canRoll: false,
   canJudgeDice: false,
   currentTurnIndex: 0,
@@ -25,16 +25,13 @@ export function setCanJudgeDice(value) {
 
 export function getCurrentPlayer() {
   const order = getTurnOrder();
-  console.log("[getCurrentPlayer] order:", order, "currentTurnIndex:", state.currentTurnIndex);
   if (!order || order.length === 0) return null;
 
   let attempts = 0;
   while (attempts < order.length) {
     const currentName = order[state.currentTurnIndex % order.length];
-    console.log("[getCurrentPlayer] 試行:", attempts, "候補:", currentName);
     const player = getPlayers().find(p => p.name === currentName);
     if (player) {
-      console.log("[getCurrentPlayer] 決定:", player);
       return player;
     }
     state.currentTurnIndex++;
@@ -75,7 +72,7 @@ export function assignEventsToCells(cells, MAX_CELL_INDEX) {
   for (let i = 0; i < cells.length; i++) {
     const cell = cells[i];
     if (cell.classList.contains("start")) {
-      cell.event = "先頭 半揮";
+      cell.event = "半揮";
     } else if (cell.classList.contains("goal")) {
 
     } else {
@@ -145,6 +142,7 @@ export function getPieces() {
   return state.players.map(p => p.pieceId);
 }
 
+// 先頭を探す
 export function getLeader(players) {
   // 最も進んだマスを求める
   const maxPos = Math.max(...players.map(p => p.position));
@@ -164,6 +162,7 @@ export function getLeader(players) {
   return candidates[0]; // 先頭プレイヤー
 }
 
+// ビリを探す
 export function getTail(players) {
   const minPos = Math.min(...players.map(p => p.position));
   const candidates = players.filter(p => p.position === minPos);
@@ -185,4 +184,44 @@ export function normalizeTurnIndex() {
   if (state.currentTurnIndex < 0) {
     state.currentTurnIndex += order.length;
   }
+}
+
+// サイコロ数をリセット
+function resetDiceBonus(player) {
+  player.diceBonus = 0;
+}
+
+// イベントカードの処理
+export function applyEvent(player, eventType) {
+  switch (eventType) {
+    case "次ターン2倍":
+      player.effectMultiplier *= 2;
+      console.log(`[イベント] ${player.name} に効果2倍を付与 → effectMultiplier=${player.effectMultiplier}`);
+      break;
+
+    case "次ターン\nサイコロ2個":
+      player.diceBonus += 1 * player.effectMultiplier;
+      console.log(`[イベント] ${player.name} にサイコロ追加 → diceBonus=${player.diceBonus}`);
+      break;
+
+    case "サイコロの出目\n×\n半揮":
+      const dice = rollDice(); // 出目を取得
+      showDiceResult(dice);    // 出目をUIに表示
+      player.hankiCount = (player.hankiCount ?? 0) + dice;
+      break;
+
+    default:
+      // 他のイベントはテキスト表示のみ
+      console.log(`イベント発生: ${eventType}`);
+  }
+}
+
+// ターン効果をリセット
+export function endTurn() {
+  const currentPlayer = getCurrentPlayer();
+  if (currentPlayer) {
+    resetDiceBonus(currentPlayer);
+    currentPlayer.effectMultiplier = 1; // 2倍効果もリセット
+  }
+  normalizeTurnIndex();
 }

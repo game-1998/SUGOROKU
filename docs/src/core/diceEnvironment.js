@@ -13,9 +13,28 @@ export function createDiceEnvironment({ canvas, loader, physicsWorld, rigidBodie
   camera.lookAt(0, 0, 0);
   camera.up.set(0, 0, -1);
   
-  const { dice, diceBody } = createDice(scene, physicsWorld, rigidBodies, loader);
-  dice.position.set(0, 5, 0);
-  scene.add(dice);
+  // サイコロを9個作成
+  const diceMeshes = [];
+  const diceBodies = [];
+  for (let i = 0; i < 9; i++) {
+    const diceObj = createDice(scene, physicsWorld, loader);
+
+    if (!diceObj || !diceObj.mesh || !diceObj.body) {
+      console.error("❌ createDice returned invalid object:", diceObj);
+      continue; // 不正なら push しない
+    }
+
+    diceObj.mesh.position.set(i * 0.5 - 2, 5, 0); // 少しずつ横にずらして配置
+    scene.add(diceObj.mesh);
+
+    rigidBodies.push({
+      mesh: diceObj.mesh,
+      body: diceObj.body,
+      _rolled: false,
+      _stopped: false,
+      _value: 0
+    });
+  }
 
   const light = new THREE.PointLight(0xffffff, 2);
   light.position.set(0, 10, 0);
@@ -51,6 +70,9 @@ export function createDiceEnvironment({ canvas, loader, physicsWorld, rigidBodie
     metalness: 0.7,
     side: THREE.DoubleSide
   });
+  bowlGeometry.scale(1, 1, -1);
+  bowlGeometry.computeVertexNormals();
+
   const bowl = new THREE.Mesh(bowlGeometry, bowlMaterial);
   scene.add(bowl);
 
@@ -114,11 +136,10 @@ export function createDiceEnvironment({ canvas, loader, physicsWorld, rigidBodie
     transform.setOrigin(new Ammo.btVector3(0, 0, 0));
     const motionState = new Ammo.btDefaultMotionState(transform);
     const body = new Ammo.btRigidBody(new Ammo.btRigidBodyConstructionInfo(0, motionState, shape, new Ammo.btVector3(0, 0, 0)));
-    body.setRestitution(0.6); // 反発係数
+    body.setRestitution(0.7); // 反発係数
     physicsWorld.addRigidBody(body);
   }
-
-  return { scene, camera, renderer, diceMesh: dice, diceBody };
+  return { scene, camera, renderer, rigidBodies };
 }
 
 export function loadDiceFace(path, loader) {

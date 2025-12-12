@@ -12,12 +12,15 @@ export function movePieceAlongPath(piece, path, board, startLength, endLength, d
     const startTime = performance.now();
     const svg = path.ownerSVGElement;
 
+    if (!svg) {
+      console.error("⚠️ path.ownerSVGElement が null です。SVG 要素が DOM に追加されているか確認してください。");
+      resolve();
+      return;
+    }
+
     function animate(time) {
       if (!piece || !path || !svg) {
         console.warn("アニメーション対象が見つかりません。中断します。");
-        console.log("piece:", piece);
-        console.log("path:", path);
-        console.log("svg:", svg);
         resolve();
         return;
       }

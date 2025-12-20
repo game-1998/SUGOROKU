@@ -291,6 +291,9 @@ export async function startGameApp() {
 
             const players = getPlayers();
             updateTurnDisplay(updatedPlayerName, turnInfo, nextPlayerButton);
+
+            // 必要なサイコロの数を出現
+            updateGrabbedDice(rigidBodies, getCurrentPlayer);
           }, 3000);
         },
         onPointerRelease: ({ isSwipe, dx, dy, pointer }) => {
@@ -311,7 +314,8 @@ export async function startGameApp() {
       scene = diceInit.scene;
       renderer = diceInit.renderer;
       camera = diceInit.camera;
-
+      updateGrabbedDice(rigidBodies, getCurrentPlayer);
+      
       setTimeout(() => {
         resizeCanvasToFit(canvas, camera, renderer,scene);
       }, 0);
@@ -324,17 +328,14 @@ export async function startGameApp() {
       nextPlayerButton.addEventListener("click", () => {
         nextPlayerButton.classList.remove("show");
 
-        // 必要なサイコロの数を出現
-        updateGrabbedDice(rigidBodies, getCurrentPlayer, physicsWorld);
-
-        showBowlArea(); //お椀エリアの表示
+        //お椀エリアの表示
+        showBowlArea();
         requestAnimationFrame(() => {
           resizeCanvasToFit(canvas, camera, renderer, scene);
         });
         setCanRoll(true);     // ターン全体で投げ許可
         setCanJudgeDice(false);
       });
-      
       
     });
   }, 0);    

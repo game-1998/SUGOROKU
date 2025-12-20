@@ -1,4 +1,8 @@
-import { getPlayers, setPlayers, getCurrentPlayer, getTurnOrder, setCurrentPlayer, removePlayer, getLeader, setTurnOrder, getPieces, normalizeTurnIndex, getState, applyEvent, endTurn } from '../state/gameState.js';
+import {
+  getPlayers, setPlayers, getCurrentPlayer, getTurnOrder, setCurrentPlayer,
+  removePlayer, getLeader, setTurnOrder, getPieces, normalizeTurnIndex,
+  getState, applyEvent, endTurn, applyEffectMultiplier, getEffectCutinText
+} from '../state/gameState.js';
 import { setPiece, getPiece, clearPieces } from '../utils/pieceRegistry.js';
 import { movePieceAlongPath } from "../core/pathMotion.js";
 import { updateCellPositions } from '../board/board.js';
@@ -368,9 +372,8 @@ function animateMinusOne(piece, targetPos, finalCell) {
   });
 }
 
-function showEventCard(eventText) {
+async function showEventCard(eventText) {
   const card = document.getElementById("eventCard");
-  const front = card.querySelector(".card-front");
   const back = card.querySelector(".card-back");
   const inner = card.querySelector(".card-inner");
 
@@ -378,15 +381,52 @@ function showEventCard(eventText) {
   const turnOrder = getTurnOrder();               // 順番配列
   const targetPlayer = resolveTargetPlayer(eventText, currentPlayer.name, turnOrder);
 
-  // 裏面テキストに対象プレイヤー名を追加
-  back.textContent = targetPlayer
-    ? `${eventText}\n対象: ${targetPlayer}`
-    : eventText;
+  console.log(
+    "[showEventCard BEFORE] player=",
+    currentPlayer.name,
+    "effectMultiplier=",
+    currentPlayer.effectMultiplier,
+    "event=",
+    eventText
+  );
 
+  // --- 効果倍率の適用 ---
+  const multiplier = currentPlayer.effectMultiplier;
+  const beforeText = eventText;
+  const afterText = applyEffectMultiplier(eventText, multiplier);
+
+  console.log("[showEventCard] 読み取った multiplier =", multiplier);
+  
   card.classList.remove("hidden");
+  back.textContent = beforeText;
 
-  // イベント効果を適用
-  applyEvent(currentPlayer, eventText);
+  // カットインが必要かどうか（multiplier が 1 以外なら強化あり）
+  const needsCutin = multiplier !== 1;
+
+  // カットイン（必要なときだけ）
+  if (needsCutin) {
+    await playEffectCutin(multiplier);
+  }
+
+  // カットイン後にテキスト切り替え
+  back.textContent = targetPlayer
+    ? `${afterText}\n対象: ${targetPlayer}`
+    : afterText;
+
+  // 効果適用
+  applyEvent(currentPlayer, afterText);
+
+  // 倍率カードかどうか判定
+  const isMultiplierCard =
+    afterText.startsWith("次ターン2倍") ||
+    afterText.startsWith("次ターン4倍") ||
+    afterText.startsWith("次ターン8倍") ||
+    afterText.startsWith("次ターン16倍");
+
+  // 倍率カードじゃなければ multiplier をリセット
+  if (!isMultiplierCard) {
+    currentPlayer.effectMultiplier = 1;
+  }
 
   // 少し遅れてめくる
   setTimeout(() => {
@@ -472,4 +512,54 @@ export function updatePreview(container, playerIndex, pieceId) {
     preview.textContent = "？";
     preview.classList.add("no-select");
   }
+}
+
+// 効果倍率のカットイン
+async function playEffectCutin(multiplier, beforeText, afterText) {
+  const cutin = document.getElementById("effectCutin");
+  const cutinText = document.getElementById("effectCutinText");
+  const overlay = document.getElementById("cutinOverlay");
+
+  // カットインに表示するテキスト
+  cutinText.textContent = getEffectCutinText(multiplier);
+
+    // 背景暗転
+  overlay.classList.remove("hidden");
+  overlay.classList.add("show");
+
+  // カットイン表示
+  cutin.classList.remove("hidden");
+  cutin.classList.add("show");
+
+  await wait(200);
+
+  // 稲妻走らせる
+  cutin.classList.add("run");
+
+  // 稲妻が終わるまで待つ（150ms）
+  await wait(1000);
+
+  // 稲妻クラスを外す
+  cutin.classList.remove("run");
+
+  await wait(800);
+
+  // カットイン消す
+  cutin.classList.remove("show");
+  cutin.classList.add("hide");
+
+  await wait(500);
+
+  cutin.classList.add("hidden");
+  cutin.classList.remove("hide");
+
+  // 背景暗転解除
+  overlay.classList.remove("show");
+  await wait(300);
+  overlay.classList.add("hidden");
+}
+
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }

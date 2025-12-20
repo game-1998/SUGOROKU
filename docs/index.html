@@ -63,6 +63,19 @@
     </div>
   </div>
 
+  <!-- 暗転レイヤー -->
+  <div id="cutinOverlay" class="cutin-overlay hidden"></div>
+
+  <!-- 効果倍率のカットイン要素 -->
+  <div id="effectCutin" class="effect-cutin hidden">
+    <div id="effectCutinText"></div>
+    <div class="speedline top first"></div>
+    <div class="speedline top second"></div>
+
+    <div class="speedline bottom first"></div>
+    <div class="speedline bottom second"></div>
+  </div>
+
   <!-- 幕の表示 -->
   <div id="curtain" class="curtain"></div>
 
@@ -112,13 +125,13 @@
       // DOM がすでに読み込まれているか確認
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', async () => {
-          const { startGameApp } = await import('./src/main.js?v=20251212'); // ver.(1/2か所目)
+          const { startGameApp } = await import('./src/main.js?v=20251220'); // ver.(1/2か所目)
           startGameApp();
         });
       } else {
         // すでに読み込み済みなら即実行
         (async () => {
-          const { startGameApp } = await import('./src/main.js?v=20251212'); // ver.(2/2か所目)
+          const { startGameApp } = await import('./src/main.js?v=20251220'); // ver.(2/2か所目)
           startGameApp();
         })();
       }

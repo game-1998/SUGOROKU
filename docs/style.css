@@ -172,9 +172,6 @@ body {
   min-width: 300px;
 }
 
-
-
-
 /* お椀エリア（サイコロを振る場所） */
 #bowlArea {
   position: fixed;
@@ -538,10 +535,6 @@ svg {
   margin-top: 20px;
 }
 
-.hidden {
-  display: none;
-}
-
 /* お椀エリアを中央に表示するスタイル */
 .popup-center {
   position: fixed;
@@ -642,4 +635,95 @@ svg {
   font-weight: bold;       /* 太字 */
   font-size: 1.2em;        /* 少し大きく */
   margin-bottom: 1em;    /* ラベルと次の行の間に余白 */
+}
+
+/* 背景暗転 */
+.cutin-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  z-index: 900;
+}
+
+.cutin-overlay.show {
+  opacity: 1;
+}
+
+.effect-cutin {
+  position: fixed;
+  top: 50%;
+  left: 50%; /* 最初は画面外（左） */
+  transform: translateX(-150%) translateY(-50%);
+  width: 100%;
+  padding: 20px 0;
+  background: rgba(255, 230, 0, 0.9);
+  color: #000;
+  font-size: 3rem;
+  font-weight: bold;
+  text-align: center;
+  box-shadow: 0 0 20px rgba(255, 200, 0, 0.8);
+  transition: transform 0.6s cubic-bezier(0.1, 0.9, 0.2, 1),
+              opacity 0.15s ease;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+/* スライドイン（左→中央） */
+.effect-cutin.show {
+  transform: translateX(-50%) translateY(-50%);
+  opacity: 1;
+}
+
+/* スライドアウト（中央→右） */
+.effect-cutin.hide {
+  transform: translateX(50%) translateY(-50%);
+  opacity: 0;
+}
+
+/* スピードライン（稲妻の代わり） */
+.effect-cutin .speedline {
+  position: absolute;
+  width: 50%;
+  height: 6px; /* 線の太さ */
+  left: -50%;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    white 100%
+  );
+  opacity: 1;
+  pointer-events: none;
+}
+
+/* 上端 */
+.effect-cutin .speedline.top {
+  top: 0;
+}
+
+/* 下端 */
+.effect-cutin .speedline.bottom {
+  bottom: 0;
+}
+
+/* 横に走るアニメーション */
+.effect-cutin.run .speedline.first {
+  animation: speedline-run 0.5s linear forwards;
+}
+
+.effect-cutin.run .speedline.second {
+  animation: speedline-run 0.5s linear forwards;
+  animation-delay: 0.2s; /* ← ここがポイント */
+}
+
+
+@keyframes speedline-run {
+  0%   { left: -50%; }
+  100% { left: 150%; }
+}
+
+.hidden {
+  display: none;
 }

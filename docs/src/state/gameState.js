@@ -53,7 +53,7 @@ export function getPlayers() {
 // 母集団を生成
 export function createEventPool(MAX_CELL_INDEX) {
   return [
-    ...Array(MAX_CELL_INDEX).fill("半揮"),
+    ...Array(Math.round(MAX_CELL_INDEX / 2)).fill("半揮"),
     ...Array(Math.round(MAX_CELL_INDEX / 5)).fill("満水"),
     ...Array(Math.round(MAX_CELL_INDEX / 3)).fill("次の人 半揮"),
     ...Array(Math.round(MAX_CELL_INDEX / 3)).fill("前の人 半揮"),
@@ -62,6 +62,7 @@ export function createEventPool(MAX_CELL_INDEX) {
     ...Array(Math.round(MAX_CELL_INDEX / 5)).fill("次ターン2倍"),
     ...Array(Math.round(MAX_CELL_INDEX / 5)).fill("次ターン\nサイコロ2個"),
     ...Array(Math.round(MAX_CELL_INDEX / 10)).fill("サイコロの出目\n×\n半揮"),
+    ...Array(Math.round(MAX_CELL_INDEX / 5)).fill("ゲーム"),
   ];
 }
 
@@ -193,35 +194,119 @@ function resetDiceBonus(player) {
 
 // イベントカードの処理
 export function applyEvent(player, eventType) {
-  switch (eventType) {
-    case "次ターン2倍":
-      player.effectMultiplier *= 2;
-      console.log(`[イベント] ${player.name} に効果2倍を付与 → effectMultiplier=${player.effectMultiplier}`);
-      break;
 
-    case "次ターン\nサイコロ2個":
-      player.diceBonus += 1 * player.effectMultiplier;
-      console.log(`[イベント] ${player.name} にサイコロ追加 → diceBonus=${player.diceBonus}`);
-      break;
+  // --- 効果倍率イベント（強化後も含む） ---
+  if (
+    eventType === "次ターン2倍" ||
+    eventType === "次ターン4倍" ||
+    eventType === "次ターン8倍" ||
+    eventType === "次ターン16倍"
+  ) {
+    player.effectMultiplier *= 2;
 
-    case "サイコロの出目\n×\n半揮":
-      const dice = rollDice(); // 出目を取得
-      showDiceResult(dice);    // 出目をUIに表示
-      player.hankiCount = (player.hankiCount ?? 0) + dice;
-      break;
-
-    default:
-      // 他のイベントはテキスト表示のみ
-      console.log(`イベント発生: ${eventType}`);
+    console.log(
+      "[applyEvent] 効果倍率UP eventType=",
+      eventType,
+      "→",
+      player.effectMultiplier,
+      "倍 (player=",
+      player.name,
+      ")"
+    );
+    console.log(`[イベント] ${player.name} の効果倍率UP → ${player.effectMultiplier}倍`);
+    return;
   }
+
+  // --- サイコロ追加イベント（強化後も含む） ---
+  if (
+    eventType === "次ターン\nサイコロ2個" ||
+    eventType === "次ターン\nサイコロ3個" ||
+    eventType === "次ターン\nサイコロ5個" ||
+    eventType === "次ターン\nサイコロ9個"
+  ) {
+    player.diceBonus += 1 * player.effectMultiplier;
+    console.log(`[イベント] ${player.name} にサイコロ追加 → diceBonus=${player.diceBonus}`);
+    return;
+  }
+
+  // --- 半揮 / 満水 系イベント（強化後も含む） ---
+  if (
+    eventType === "サイコロの出目\n×\n半揮" ||
+    eventType === "サイコロの出目\n×\n満水" ||
+    eventType === "サイコロの出目\n×\n満水2杯" ||
+    eventType === "サイコロの出目\n×\n満水4杯"
+  ) {
+    const dice = rollDice();
+    showDiceResult(dice);
+
+    player.hankiCount = (player.hankiCount ?? 0) + dice * player.effectMultiplier;
+
+    console.log(`[イベント] ${player.name} の半揮系 → +${dice * player.effectMultiplier}`);
+    return;
+  }
+
+  // --- その他 ---
+  console.log(`イベント発生: ${eventType}`);
 }
+
 
 // ターン効果をリセット
 export function endTurn() {
   const currentPlayer = getCurrentPlayer();
   if (currentPlayer) {
     resetDiceBonus(currentPlayer);
-    currentPlayer.effectMultiplier = 1; // 2倍効果もリセット
+    //currentPlayer.effectMultiplier = 1; // 2倍効果もリセット
   }
   normalizeTurnIndex();
+}
+
+export function getEffectCutinText(multiplier) {
+  return `効果${multiplier}倍!!`;
+}
+
+export function applyEffectMultiplier(eventText, multiplier) {
+  const level = multiplierToLevel(multiplier);
+
+  if (effectMap[eventText]) {
+    const list = effectMap[eventText];
+    return list[Math.min(level, list.length - 1)];
+  }
+
+  return eventText;
+}
+
+const effectMap = {
+  "半揮": ["半揮", "満水", "満水2杯", "満水4杯"],
+  "満水": ["満水", "満水2杯", "満水4杯", "満水8杯"],
+
+  "次の人 半揮": ["次の人 半揮", "次の人 満水", "次の人 満水2杯", "次の人 満水4杯"],
+  "前の人 半揮": ["前の人 半揮", "前の人 満水", "前の人 満水2杯", "前の人 満水4杯"],
+  "指名 半揮": ["指名 半揮", "指名 満水", "指名 満水2杯", "指名 満水4杯"],
+  "先頭 半揮": ["先頭 半揮", "先頭 満水", "先頭 満水2杯", "先頭 満水4杯"],
+
+  "次ターン2倍": ["次ターン2倍", "次ターン4倍", "次ターン8倍", "次ターン16倍"],
+  "次ターン\nサイコロ2個": [
+    "次ターン\nサイコロ2個",
+    "次ターン\nサイコロ3個",
+    "次ターン\nサイコロ5個",
+    "次ターン\nサイコロ9個"
+  ],
+
+  "サイコロの出目\n×\n半揮": [
+    "サイコロの出目\n×\n半揮",
+    "サイコロの出目\n×\n満水",
+    "サイコロの出目\n×\n満水2杯",
+    "サイコロの出目\n×\n満水4杯"
+  ]
+};
+
+export function multiplierToLevel(multiplier) {
+  if (multiplier <= 1) return 0;  // 通常
+  if (multiplier <= 2) return 1;  // 2倍
+  if (multiplier <= 4) return 2;  // 4倍
+  if (multiplier <= 8) return 3;  // 8倍
+  if (multiplier <= 16) return 4; // 16倍
+
+  // それ以上の倍率が来ても破綻しないように
+  return 4;
 }

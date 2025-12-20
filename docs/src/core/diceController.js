@@ -6,6 +6,7 @@ let hasEmittedTotal = false;
 let grabCenter = null; // 円の中心（THREE.Vector3）
 let grabbedDice = []; // 操作対象サイコロ
 let isHolding = false;
+let previousDiceCount = 0;
 const tmpTrans = new Ammo.btTransform();
 
 export function setupDiceController({
@@ -50,11 +51,23 @@ export function setupDiceController({
     grabCenter = intersectPoint.clone();
 
     // 掴んだ瞬間に指の周囲に寄せる（円形に並べる）
-    const radius = 1.2;
+    const layout = getSpecialLayout(grabbedDice.length, 0.8);
+
     grabbedDice.forEach((obj, i) => {
-      const angle = (i / grabbedDice.length) * Math.PI * 2;
-      const x = intersectPoint.x + Math.cos(angle) * radius;
-      const z = intersectPoint.z + Math.sin(angle) * radius;
+      let px, pz;
+
+      if (layout) {
+        //  特別配置
+        [px, pz] = layout[i];
+      } else {
+        // フォールバック：円形
+        const angle = (i / grabbedDice.length) * Math.PI * 2;
+        px = Math.cos(angle) * 1.2;
+        pz = Math.sin(angle) * 1.2;
+      }
+
+      const x = intersectPoint.x + px;
+      const z = intersectPoint.z + pz;
       const y = 7;
 
       obj.mesh.position.set(x, y, z);
@@ -62,6 +75,12 @@ export function setupDiceController({
       const t = new Ammo.btTransform();
       t.setIdentity();
       t.setOrigin(new Ammo.btVector3(x, y, z));
+      t.setRotation(new Ammo.btQuaternion(
+        obj.mesh.quaternion.x,
+        obj.mesh.quaternion.y,
+        obj.mesh.quaternion.z,
+        obj.mesh.quaternion.w
+      ));
       obj.body.setWorldTransform(t);
       obj.body.getMotionState().setWorldTransform(t);
     });
@@ -85,11 +104,23 @@ export function setupDiceController({
       grabCenter.copy(intersectPoint);
     }
 
-    const radius = 1.2;
+    const layout = getSpecialLayout(grabbedDice.length, 0.8);
+
     grabbedDice.forEach((obj, i) => {
-      const angle = (i / grabbedDice.length) * Math.PI * 2;
-      const x = grabCenter.x + Math.cos(angle) * radius;
-      const z = grabCenter.z + Math.sin(angle) * radius;
+      let px, pz;
+
+      if (layout) {
+        //  特別配置
+        [px, pz] = layout[i];
+      } else {
+        // フォールバック：円形
+        const angle = (i / grabbedDice.length) * Math.PI * 2;
+        px = Math.cos(angle) * 1.2;
+        pz = Math.sin(angle) * 1.2;
+      }
+
+      const x = intersectPoint.x + px;
+      const z = intersectPoint.z + pz;
       const y = 7;
 
       obj.mesh.position.set(x, y, z);
@@ -97,6 +128,12 @@ export function setupDiceController({
       const t = new Ammo.btTransform();
       t.setIdentity();
       t.setOrigin(new Ammo.btVector3(x, y, z));
+      t.setRotation(new Ammo.btQuaternion(
+        obj.mesh.quaternion.x,
+        obj.mesh.quaternion.y,
+        obj.mesh.quaternion.z,
+        obj.mesh.quaternion.w
+      ));
 
       // ドラッグ中は物理速度を完全に殺す
       obj.body.setLinearVelocity(new Ammo.btVector3(0, 0, 0));
@@ -137,6 +174,12 @@ export function setupDiceController({
         obj.mesh.position.x,
         obj.mesh.position.y - 1,
         obj.mesh.position.z
+      ));
+      t.setRotation(new Ammo.btQuaternion(
+        obj.mesh.quaternion.x,
+        obj.mesh.quaternion.y,
+        obj.mesh.quaternion.z,
+        obj.mesh.quaternion.w
       ));
       obj.body.setWorldTransform(t);
       obj.body.getMotionState().setWorldTransform(t);
@@ -230,33 +273,67 @@ function getHoldDuration(swipePath) {
 }
 
 // grabbedDice を更新して表示・非表示を切り替える関数
-export function updateGrabbedDice(rigidBodies, getCurrentPlayer, physicsWorld) {
+export function updateGrabbedDice(rigidBodies, getCurrentPlayer) {
   const currentPlayer = getCurrentPlayer();
   const diceCount = 1 + (currentPlayer?.diceBonus ?? 0);
 
   grabbedDice = rigidBodies.slice(0, diceCount);
 
-  rigidBodies.forEach((obj, i) => {
-    
-    if (i < diceCount) {
-      obj.mesh.visible = true;
-      obj._rolled = false;
+  // お椀の中心（あなたの環境に合わせて調整）
+  const bowlCenter = new THREE.Vector3(0, 2.5, 0);
 
-      // ターン開始時に描画位置へ移動させる
-      const t = new Ammo.btTransform();
-      t.setIdentity();
-    } else {
+  for (let i = previousDiceCount; i < diceCount; i++) {
+    const obj = grabbedDice[i];
+
+    obj.mesh.visible = true;
+    obj._rolled = false;
+    obj._stopped = false;
+    obj._value = 0;
+
+    // 新しく増えたサイコロだけ適当な位置に置く（お椀の中）
+    const pos = bowlCenter.clone().add(
+      new THREE.Vector3(0, 1.2, 0)
+    );
+
+    obj.mesh.position.copy(pos);
+
+    const t = new Ammo.btTransform();
+    t.setIdentity();
+    t.setOrigin(new Ammo.btVector3(pos.x, pos.y, pos.z));
+
+    // 回転は触らない（自然な“前回の続き感”を維持）
+    t.setRotation(new Ammo.btQuaternion(
+      obj.mesh.quaternion.x,
+      obj.mesh.quaternion.y,
+      obj.mesh.quaternion.z,
+      obj.mesh.quaternion.w
+    ));
+
+    obj.body.setWorldTransform(t);
+    obj.body.getMotionState().setWorldTransform(t);
+
+    // 物理演算を有効化して自然に落とす
+    obj.body.setActivationState(Ammo.ACTIVE_TAG);
+    obj.body.activate();
+  }
+
+  // 今回使わないサイコロは床下へ
+  rigidBodies.forEach((obj, i) => {
+    if (i >= diceCount) {
       obj.mesh.visible = false;
       obj._rolled = true;
       obj._stopped = true;
-      // エリア外に退避
+
       const t = new Ammo.btTransform();
       t.setIdentity();
-      t.setOrigin(new Ammo.btVector3(0, -100, 0)); // 床の下に移動
+      t.setOrigin(new Ammo.btVector3(0, -100, 0));
       obj.body.setWorldTransform(t);
       obj.body.getMotionState().setWorldTransform(t);
     }
   });
+
+  // 次回比較用に記録
+  previousDiceCount = diceCount;
 
   return grabbedDice;
 }
@@ -295,7 +372,7 @@ export function updateDiceFrame({
     const isOutOfBowl = dicePos.y < 0;
 
     // サイコロごとに停止判定フラグを持たせる
-    if ((getState().canJudgeDice && !obj._stopped && isDiceStopped(obj.body)) && obj.mesh.position.y < 1.0 || isOutOfBowl) {
+    if ((getState().canJudgeDice && !obj._stopped && isDiceStopped(obj.body)) && obj.mesh.position.y < 5.0 || isOutOfBowl) {
       obj._stopped = true; // このサイコロは判定済み
 
       let value = isOutOfBowl ? -1 : getDiceValueFromRotation(obj.mesh.quaternion);
@@ -318,3 +395,50 @@ export function updateDiceFrame({
   renderer.render(scene, camera);
 }
 
+// サイコロの配置座標
+function getSpecialLayout(count, d) {
+  const pos = [];
+
+  switch (count) {
+    case 1:
+      pos.push([0, 0]);
+      break;
+
+    case 2:
+      pos.push([-d, 0], [d, 0]);
+      break;
+
+    case 3: {
+      const r = d;
+      for (let i = 0; i < 3; i++) {
+        const angle = (Math.PI * 2 / 3) * i - Math.PI / 2;
+        pos.push([Math.cos(angle) * r, Math.sin(angle) * r]);
+      }
+      break;
+    }
+
+    case 5: {
+      const r = d;
+      for (let i = 0; i < 5; i++) {
+        const angle = (Math.PI * 2 / 5) * i - Math.PI / 2;
+        pos.push([Math.cos(angle) * r, Math.sin(angle) * r]);
+      }
+      break;
+    }
+
+    case 9: {
+      const grid = [-d * 2, 0, d * 2];
+      for (let x of grid) {
+        for (let z of grid) {
+          pos.push([x, z]);
+        }
+      }
+      break;
+    }
+
+    default:
+      return null; // 特別配置なし → 円形配置にフォールバック
+  }
+
+  return pos;
+}

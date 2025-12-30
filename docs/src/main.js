@@ -1,7 +1,12 @@
 import { rollDicePhysics, initPhysics, animate } from './core/physics.js';
 import { init3DDice } from './core/diceGraphics.js';
-import { setupPlayers, updateTurnDisplay, movePlayer, showBowlArea, hideBowlArea, showDiceResult, showNameBubble, handleRemovePlayer, updatePreview } from './ui/ui.js';
-import { getState, setCanRoll, setCanJudgeDice, setCurrentPlayer, getCurrentPlayer, setPlayers, getPlayers, assignEventsToCells, logEventDistribution, addPlayer, removePlayer, getTurnOrder, setTurnOrder, getPieces} from './state/gameState.js';
+import { setupPlayers, updateTurnDisplay, movePlayer, showBowlArea, hideBowlArea,
+  showDiceResult, showNameBubble, handleRemovePlayer, updatePreview, showHankiResultPopup
+} from './ui/ui.js';
+import { getState, setCanRoll, setCanJudgeDice, setCurrentPlayer, getCurrentPlayer,
+  setPlayers, getPlayers, assignEventsToCells, logEventDistribution, addPlayer,
+  removePlayer, getTurnOrder, setTurnOrder, getPieces
+} from './state/gameState.js';
 import { resizeCanvasToFit } from './utils/canvasUtils.js';
 import { generateBoard, updateCellPositions } from './board/board.js';
 import { updateGrabbedDice } from './core/diceController.js';
@@ -11,7 +16,7 @@ let selectedPieces = [];
 const playerPieces = new Map(); // プレイヤー番号 → コマDOM要素
 let nextPlayerButton, turnInfo;
 let cells, board, svg;
-const MAX_CELL_INDEX = 50;
+const MAX_CELL_INDEX = 30;
 
 export async function startGameApp() {
   window.Ammo = Ammo;             // グローバルに渡す（他のファイルでも使えるように）
@@ -280,17 +285,50 @@ export async function startGameApp() {
         onDiceStop: async (diceValue) => {
           showDiceResult(diceValue); // 出目を表示
 
+          // 現在のイベントが「サイコロの出目 × 半揮」系かどうか
+          let currentEvent = window.currentEventType; 
+
+          if (currentEvent === "半揮系") {
+            // 計算
+            const player = getCurrentPlayer()
+            const multiplier = player.effectMultiplier;
+            const add = diceValue * 0.5 * multiplier;
+
+            await wait(1000);
+            
+            // ポップアップ表示（OK を押すまで待つ）
+            await showHankiResultPopup(
+              `✨ 結果 ✨\n出目 ${diceValue} × ${0.5 * multiplier} = ${add}杯！`
+            );
+            hideBowlArea(rigidBodies);
+
+            // 次のプレイヤーへ
+            player.effectMultiplier = 1;
+            const turnOrder = getTurnOrder();
+            const currentIndex = turnOrder.indexOf(player.name);
+            getState().currentTurnIndex = (currentIndex + 1) % turnOrder.length;
+            const nextPlayerName = turnOrder[(currentIndex + 1) % turnOrder.length];
+
+            setCurrentPlayer(nextPlayerName);
+            updateTurnDisplay(nextPlayerName, turnInfo, nextPlayerButton);
+            updateGrabbedDice(rigidBodies, getCurrentPlayer);
+
+            window.currentEventType = null;
+            return;
+          }
           setTimeout(async() => {
             hideBowlArea(rigidBodies); // お椀を非表示
+            const updatedPlayerName = await movePlayer(diceValue, getCurrentPlayer().name);
 
-            const updatedPlayerName = await movePlayer(diceValue, getCurrentPlayer().name, (nextName) => {
-              setCurrentPlayer(nextName);
-            });
-
-            setCurrentPlayer(updatedPlayerName);
-
-            const players = getPlayers();
-            updateTurnDisplay(updatedPlayerName, turnInfo, nextPlayerButton);
+            await wait(1000);
+            currentEvent = window.currentEventType; 
+            if (currentEvent !== "半揮系"){
+              const turnOrder = getTurnOrder();
+              const currentIndex = turnOrder.indexOf(getCurrentPlayer().name);
+              getState().currentTurnIndex = (currentIndex + 1) % turnOrder.length;
+              setCurrentPlayer(updatedPlayerName);
+              updateTurnDisplay(updatedPlayerName, turnInfo, nextPlayerButton);
+            }
 
             // 必要なサイコロの数を出現
             updateGrabbedDice(rigidBodies, getCurrentPlayer);

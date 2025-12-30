@@ -204,16 +204,6 @@ export function applyEvent(player, eventType) {
   ) {
     player.effectMultiplier *= 2;
 
-    console.log(
-      "[applyEvent] 効果倍率UP eventType=",
-      eventType,
-      "→",
-      player.effectMultiplier,
-      "倍 (player=",
-      player.name,
-      ")"
-    );
-    console.log(`[イベント] ${player.name} の効果倍率UP → ${player.effectMultiplier}倍`);
     return;
   }
 
@@ -225,7 +215,6 @@ export function applyEvent(player, eventType) {
     eventType === "次ターン\nサイコロ9個"
   ) {
     player.diceBonus += 1 * player.effectMultiplier;
-    console.log(`[イベント] ${player.name} にサイコロ追加 → diceBonus=${player.diceBonus}`);
     return;
   }
 
@@ -236,13 +225,7 @@ export function applyEvent(player, eventType) {
     eventType === "サイコロの出目\n×\n満水2杯" ||
     eventType === "サイコロの出目\n×\n満水4杯"
   ) {
-    const dice = rollDice();
-    showDiceResult(dice);
-
-    player.hankiCount = (player.hankiCount ?? 0) + dice * player.effectMultiplier;
-
-    console.log(`[イベント] ${player.name} の半揮系 → +${dice * player.effectMultiplier}`);
-    return;
+    return { needsReroll: true, type: eventType };
   }
 
   // --- その他 ---

@@ -1,7 +1,8 @@
 import {
   getPlayers, setPlayers, getCurrentPlayer, getTurnOrder, setCurrentPlayer,
   removePlayer, getLeader, setTurnOrder, getPieces, normalizeTurnIndex,
-  getState, applyEvent, endTurn, applyEffectMultiplier, getEffectCutinText
+  getState, applyEvent, endTurn, applyEffectMultiplier, getEffectCutinText,
+  setCanRoll, setCanJudgeDice
 } from '../state/gameState.js';
 import { setPiece, getPiece, clearPieces } from '../utils/pieceRegistry.js';
 import { movePieceAlongPath } from "../core/pathMotion.js";
@@ -176,14 +177,14 @@ export async function movePlayer(diceValue, currentPlayerName, updateTurnDisplay
 
   const nextPlayerName = turnOrder[(currentIndex + 1) % turnOrder.length];
 
-    // イベントカードの表示
+  // イベントカードの表示
   const stoppedCell = cells[targetPos];
   if (stoppedCell.event) {
     showEventCard(stoppedCell.event);
   }
 
-  setCurrentPlayer(nextPlayerName);
-  getState().currentTurnIndex = (currentIndex + 1) % turnOrder.length;
+  //setCurrentPlayer(nextPlayerName);
+  
 
   return nextPlayerName;
 }
@@ -381,27 +382,28 @@ async function showEventCard(eventText) {
   const turnOrder = getTurnOrder();               // 順番配列
   const targetPlayer = resolveTargetPlayer(eventText, currentPlayer.name, turnOrder);
 
-  console.log(
-    "[showEventCard BEFORE] player=",
-    currentPlayer.name,
-    "effectMultiplier=",
-    currentPlayer.effectMultiplier,
-    "event=",
-    eventText
-  );
-
   // --- 効果倍率の適用 ---
   const multiplier = currentPlayer.effectMultiplier;
   const beforeText = eventText;
   const afterText = applyEffectMultiplier(eventText, multiplier);
-
-  console.log("[showEventCard] 読み取った multiplier =", multiplier);
   
   card.classList.remove("hidden");
   back.textContent = beforeText;
 
   // カットインが必要かどうか（multiplier が 1 以外なら強化あり）
   const needsCutin = multiplier !== 1;
+
+  // 効果適用
+  const result = applyEvent(currentPlayer, afterText);
+
+  // 半揮イベントならフラグを立てる
+  if (result?.needsReroll) {
+    window.currentEventType = "半揮系";
+    setCanRoll(true);        // サイコロをつかめるようにする
+    setCanJudgeDice(false);  // 判定はまだ開始しない
+  } else {
+    window.currentEventType = null;
+  }
 
   // カットイン（必要なときだけ）
   if (needsCutin) {
@@ -413,15 +415,13 @@ async function showEventCard(eventText) {
     ? `${afterText}\n対象: ${targetPlayer}`
     : afterText;
 
-  // 効果適用
-  applyEvent(currentPlayer, afterText);
-
   // 倍率カードかどうか判定
   const isMultiplierCard =
     afterText.startsWith("次ターン2倍") ||
     afterText.startsWith("次ターン4倍") ||
     afterText.startsWith("次ターン8倍") ||
-    afterText.startsWith("次ターン16倍");
+    afterText.startsWith("次ターン16倍") ||
+    afterText.startsWith("サイコロの出目");
 
   // 倍率カードじゃなければ multiplier をリセット
   if (!isMultiplierCard) {
@@ -441,6 +441,11 @@ async function showEventCard(eventText) {
       }, { once: true });
     }, 1000); // アニメーション時間に合わせて調整
   }, 500);
+
+  if (result?.needsReroll) {
+    await wait(2500);
+    showBowlArea();
+  }
 }
 
 function resolveTargetPlayer(eventText, currentPlayerName, turnOrder) {
@@ -559,6 +564,21 @@ async function playEffectCutin(multiplier, beforeText, afterText) {
   overlay.classList.add("hidden");
 }
 
+export function showHankiResultPopup(text) {
+  const popup = document.getElementById("hankiResultPopup");
+  const textBox = document.getElementById("hankiResultText");
+  const okButton = document.getElementById("hankiResultOk");
+
+  textBox.textContent = text;
+  popup.classList.remove("hidden");
+
+  return new Promise(resolve => {
+    okButton.onclick = () => {
+      popup.classList.add("hidden");
+      resolve();
+    };
+  });
+}
 
 function wait(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));

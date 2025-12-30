@@ -727,3 +727,35 @@ svg {
 .hidden {
   display: none;
 }
+
+.popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.popup.hidden {
+  display: none;
+}
+
+.popup-content {
+  background: white;
+  padding: 24px 32px;
+  border-radius: 12px;
+  text-align: center;
+  font-size: 20px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.3);
+}
+
+#hankiResultOk {
+  margin-top: 16px;
+  padding: 8px 20px;
+  font-size: 18px;
+}

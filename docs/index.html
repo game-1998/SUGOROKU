@@ -108,6 +108,12 @@
       </div>
     </div>
     
+    <div id="hankiResultPopup" class="popup hidden">
+      <div class="popup-content">
+        <div id="hankiResultText"></div>
+        <button id="hankiResultOk">OK</button>
+      </div>
+    </div>
 
     <!-- ホーム画面へ遷移 -->
     <button id="backToHomeButton" class="hidden">ホーム画面へ戻る</button>
@@ -125,13 +131,13 @@
       // DOM がすでに読み込まれているか確認
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', async () => {
-          const { startGameApp } = await import('./src/main.js?v=20251220'); // ver.(1/2か所目)
+          const { startGameApp } = await import('./src/main.js?v=20251230'); // ver.(1/2か所目)
           startGameApp();
         });
       } else {
         // すでに読み込み済みなら即実行
         (async () => {
-          const { startGameApp } = await import('./src/main.js?v=20251220'); // ver.(2/2か所目)
+          const { startGameApp } = await import('./src/main.js?v=20251230'); // ver.(2/2か所目)
           startGameApp();
         })();
       }

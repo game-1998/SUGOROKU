@@ -221,6 +221,7 @@ export function showBowlArea() {
   const bowl = document.getElementById('bowlArea');
   bowl.classList.remove('hidden');
   bowl.classList.add('show');
+  showDiceResult("？");
 }
 
 //お椀エリアの非表示

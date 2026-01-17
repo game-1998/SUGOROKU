@@ -13,15 +13,15 @@ export function createDice(scene, physicsWorld, loader) {
     loadDiceFace("images/dice2.png", loader),
     loadDiceFace("images/dice5.png", loader)
   ]; // 画像付き材質
-  const dice = new THREE.Mesh(diceGeometry, diceMaterials);
-  scene.add(dice);
+  const mesh = new THREE.Mesh(diceGeometry, diceMaterials);
+  scene.add(mesh);
 
   const shape = new Ammo.btBoxShape(new Ammo.btVector3(size / 2, size / 2, size / 2));
   const transform = new Ammo.btTransform();
   transform.setIdentity();
   transform.setOrigin(new Ammo.btVector3(0, 7, 0)); // 高い位置から落とす
 
-  const mass = 10;
+  const mass = 5;
   const localInertia = new Ammo.btVector3(0, 0, 0);
   shape.calculateLocalInertia(mass, localInertia);
 
@@ -29,11 +29,22 @@ export function createDice(scene, physicsWorld, loader) {
   const rbInfo = new Ammo.btRigidBodyConstructionInfo(mass, motionState, shape, localInertia);
   const diceBody = new Ammo.btRigidBody(rbInfo);
   diceBody.setRestitution(0.9); // 反発係数
+  
+  const diceData = {};
+  diceBody.setUserPointer(diceData);
+
   physicsWorld.addRigidBody(diceBody);
+
+  diceData.mesh = mesh;
+  diceData.body = diceBody;
+  diceData._rolled = false;
+  diceData._stopped = false;
+  diceData._value = 0;
+  diceData.id = Ammo.getPointer(diceBody);
 
   diceBody.setActivationState(Ammo.DISABLE_DEACTIVATION);
 
-  return { mesh: dice, body: diceBody };
+  return diceData;
 }
 
 // サイコロの静止判定

@@ -1,6 +1,6 @@
 import { createDice } from './dicePhysics.js';
 
-export function createDiceEnvironment({ canvas, loader, physicsWorld, rigidBodies }) {
+export function createDiceEnvironment({ canvas, loader, physicsWorld, rigidBodies, diceObjects }) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;
@@ -14,26 +14,19 @@ export function createDiceEnvironment({ canvas, loader, physicsWorld, rigidBodie
   camera.up.set(0, 0, -1);
   
   // サイコロを9個作成
-  const diceMeshes = [];
-  const diceBodies = [];
   for (let i = 0; i < 9; i++) {
-    const diceObj = createDice(scene, physicsWorld, loader);
+    const diceData = createDice(scene, physicsWorld, loader);
 
-    if (!diceObj || !diceObj.mesh || !diceObj.body) {
-      console.error("❌ createDice returned invalid object:", diceObj);
+    if (!diceData || !diceData.mesh || !diceData.body) {
+      console.error("❌ createDice returned invalid object:", diceData);
       continue; // 不正なら push しない
     }
 
-    diceObj.mesh.position.set(i * 0.5 - 2, 5, 0); // 少しずつ横にずらして配置
-    scene.add(diceObj.mesh);
+    diceData.mesh.position.set(i * 0.5 - 2, 5, 0); // 少しずつ横にずらして配置
+    scene.add(diceData.mesh);
 
-    rigidBodies.push({
-      mesh: diceObj.mesh,
-      body: diceObj.body,
-      _rolled: false,
-      _stopped: false,
-      _value: 0
-    });
+    rigidBodies.push(diceData);
+    diceObjects.push(diceData);
   }
 
   const light = new THREE.PointLight(0xffffff, 2);
@@ -136,7 +129,7 @@ export function createDiceEnvironment({ canvas, loader, physicsWorld, rigidBodie
     transform.setOrigin(new Ammo.btVector3(0, 0, 0));
     const motionState = new Ammo.btDefaultMotionState(transform);
     const body = new Ammo.btRigidBody(new Ammo.btRigidBodyConstructionInfo(0, motionState, shape, new Ammo.btVector3(0, 0, 0)));
-    body.setRestitution(0.7); // 反発係数
+    body.setRestitution(0.8); // 反発係数
     physicsWorld.addRigidBody(body);
   }
   return { scene, camera, renderer, rigidBodies };

@@ -1,6 +1,7 @@
 import { isDiceStopped } from './dicePhysics.js';
 import { getDiceValueFromRotation } from './diceLogic.js';
 import { setCanJudgeDice, getCurrentPlayer, getState } from '../state/gameState.js';
+import { setActiveThrownDice, enableDicePhysics, disableDicePhysics } from './physics.js';
 
 let hasEmittedTotal = false;
 let grabCenter = null; // 円の中心（THREE.Vector3）
@@ -236,6 +237,7 @@ export function setupDiceController({
           body.activate();
         }, 0);   
       }
+      setActiveThrownDice(obj.id);
     });
 
     setCanJudgeDice(true);
@@ -258,10 +260,7 @@ export function setupDiceController({
     }
 
     swipePath = [];
-    //grabbedDice = [];
   });
-
-
 }
 
 function getHoldDuration(swipePath) {

@@ -1,4 +1,4 @@
-import { rollDicePhysics, initPhysics, animate } from './core/physics.js';
+import { initPhysics, animate } from './core/physics.js';
 import { init3DDice } from './core/diceGraphics.js';
 import { setupPlayers, updateTurnDisplay, movePlayer, showBowlArea, hideBowlArea,
   showDiceResult, showNameBubble, handleRemovePlayer, updatePreview, showHankiResultPopup
@@ -39,6 +39,8 @@ export async function startGameApp() {
   let diceInit;
   let isDragging = false; // 指が触れている間 true
   let playerNames = [];
+  let grabbedDice = [];
+  let diceObjects = [];
 
   document.getElementById("playerCount").addEventListener("change", () => {
     const count = parseInt(document.getElementById("playerCount").value);
@@ -265,6 +267,7 @@ export async function startGameApp() {
         canvas,
         physicsWorld,
         rigidBodies,
+        diceObjects,
         loader,
         canRollRef: {
           get value() {
@@ -311,7 +314,7 @@ export async function startGameApp() {
 
             setCurrentPlayer(nextPlayerName);
             updateTurnDisplay(nextPlayerName, turnInfo, nextPlayerButton);
-            updateGrabbedDice(rigidBodies, getCurrentPlayer);
+            grabbedDice = updateGrabbedDice(diceObjects, getCurrentPlayer);
 
             window.currentEventType = null;
             return;
@@ -331,7 +334,7 @@ export async function startGameApp() {
             }
 
             // 必要なサイコロの数を出現
-            updateGrabbedDice(rigidBodies, getCurrentPlayer);
+            grabbedDice = updateGrabbedDice(diceObjects, getCurrentPlayer);
           }, 3000);
         },
         onPointerRelease: ({ isSwipe, dx, dy, pointer }) => {
@@ -352,7 +355,7 @@ export async function startGameApp() {
       scene = diceInit.scene;
       renderer = diceInit.renderer;
       camera = diceInit.camera;
-      updateGrabbedDice(rigidBodies, getCurrentPlayer);
+      grabbedDice = updateGrabbedDice(diceObjects, getCurrentPlayer);
       
       setTimeout(() => {
         resizeCanvasToFit(canvas, camera, renderer,scene);
@@ -360,7 +363,7 @@ export async function startGameApp() {
 
       renderer.setPixelRatio(window.devicePixelRatio);
 
-      animate(renderer, scene, camera, physicsWorld, diceInit.onDiceStop, diceInit.canJudgeDiceRef); // 毎フレーム更新
+      animate(renderer, scene, camera, physicsWorld, diceInit.onDiceStop, diceInit.canJudgeDiceRef, rigidBodies); // 毎フレーム更新
 
       // ボタンを押したらサイコロを振れるようにする
       nextPlayerButton.addEventListener("click", () => {

@@ -2,6 +2,7 @@ import { updateDiceFrame } from "./diceController.js";
 export let activeThrownDice = null;
 
 let lastHitTime = 0; // ★ 連続再生防止のクールダウン
+let isFirstHit = true;
 const activeCollisions = new Set();
 
 function playDiceHit(relativeSpeed) {
@@ -13,8 +14,13 @@ function playDiceHit(relativeSpeed) {
   // ★ 相対速度を音量に変換
   const maxSpeed = 5; // 調整可能
   let volume = relativeSpeed / maxSpeed;
+  // 最初の衝突だけ補正
+  if (isFirstHit) {
+    volume *= 3;
+    isFirstHit = false;
+  }
   if (volume > 1) volume = 1;
-  if (volume < 0.1) volume = 0.1; // 小さすぎる音は聞こえないので下限
+  console.log("volume:",volume);
   sound.volume = volume;
   sound.play();
 }
@@ -136,6 +142,7 @@ export function animate(renderer, scene, camera, physicsWorld, onDiceStop, canJu
           const rvz = vel0.z() - vel1.z();
 
           relativeSpeed = Math.sqrt(rvx*rvx + rvy*rvy + rvz*rvz);
+          
 
         } catch (e) {
           console.warn("速度取得エラー:", e);
@@ -145,6 +152,7 @@ export function animate(renderer, scene, camera, physicsWorld, onDiceStop, canJu
 
         currentFrameHits.add(activeThrownDice);
         if (!activeCollisions.has(activeThrownDice)) {
+          console.log("relativeSpeed:",relativeSpeed);
           playDiceHit(relativeSpeed);
           activeCollisions.add(activeThrownDice);
         }
@@ -163,4 +171,5 @@ export function animate(renderer, scene, camera, physicsWorld, onDiceStop, canJu
 
 export function setActiveThrownDice(id) {
   activeThrownDice = id;
+  isFirstHit = true;
 }

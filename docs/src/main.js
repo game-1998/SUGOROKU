@@ -10,6 +10,7 @@ import { getState, setCanRoll, setCanJudgeDice, setCurrentPlayer, getCurrentPlay
 import { resizeCanvasToFit } from './utils/canvasUtils.js';
 import { generateBoard, updateCellPositions } from './board/board.js';
 import { updateGrabbedDice } from './core/diceController.js';
+import { playBGM } from "./sounds/bgmManager.js";
 
 let usedPieceIds = new Set();
 let selectedPieces = [];
@@ -157,6 +158,7 @@ export async function startGameApp() {
   document.getElementById("confirmOrderButton").addEventListener("click", async () => {
     const curtain = document.getElementById("curtain");
     await playCurtainTransition(curtain);
+    playBGM();
 
     // 設定ボタンのイベントリスナー登録
     const settingsBtn = document.getElementById("settingsBtn");

@@ -7,6 +7,7 @@ import {
 import { setPiece, getPiece, clearPieces } from '../utils/pieceRegistry.js';
 import { movePieceAlongPath } from "../core/pathMotion.js";
 import { updateCellPositions } from '../board/board.js';
+import { fadeVolume } from "../sounds/bgmManager.js";
 
 export function setupPlayers(count, gameScreen, playerNames, pieceIds) {
   const players = [];
@@ -222,6 +223,7 @@ export function showBowlArea() {
   bowl.classList.remove('hidden');
   bowl.classList.add('show');
   showDiceResult("？");
+  fadeVolume(0.1);
 }
 
 //お椀エリアの非表示
@@ -229,6 +231,7 @@ export function hideBowlArea(rigidBodies) {
   const bowl = document.getElementById('bowlArea');
   bowl.classList.remove('show');
   bowl.classList.add('hidden');
+  fadeVolume(0.4);
   
   rigidBodies.forEach(obj => {
     if (obj._value === -1) {

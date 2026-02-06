@@ -20,3 +20,10 @@ export function fadeVolume(target) {
     if (count >= steps) clearInterval(interval);
   }, duration / steps);
 }
+
+const effect2xSound = new Audio("src/sounds/effect2x.mp3");
+
+export function playEffect2xCutinSound() {
+  effect2xSound.currentTime = 0;
+  effect2xSound.play();
+}

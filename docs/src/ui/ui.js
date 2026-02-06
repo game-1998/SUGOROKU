@@ -7,7 +7,7 @@ import {
 import { setPiece, getPiece, clearPieces } from '../utils/pieceRegistry.js';
 import { movePieceAlongPath } from "../core/pathMotion.js";
 import { updateCellPositions } from '../board/board.js';
-import { fadeVolume } from "../sounds/bgmManager.js";
+import { fadeVolume, playBGM, playEffect2xCutinSound, } from "../sounds/bgmManager.js";
 
 export function setupPlayers(count, gameScreen, playerNames, pieceIds) {
   const players = [];
@@ -544,6 +544,7 @@ async function playEffectCutin(multiplier, beforeText, afterText) {
 
   // 稲妻走らせる
   cutin.classList.add("run");
+  playEffect2xCutinSound();
 
   // 稲妻が終わるまで待つ（150ms）
   await wait(1000);

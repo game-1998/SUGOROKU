@@ -20,7 +20,6 @@ function playDiceHit(relativeSpeed) {
     isFirstHit = false;
   }
   if (volume > 1) volume = 1;
-  console.log("volume:",volume);
   sound.volume = volume;
   sound.play();
 }
@@ -152,7 +151,6 @@ export function animate(renderer, scene, camera, physicsWorld, onDiceStop, canJu
 
         currentFrameHits.add(activeThrownDice);
         if (!activeCollisions.has(activeThrownDice)) {
-          console.log("relativeSpeed:",relativeSpeed);
           playDiceHit(relativeSpeed);
           activeCollisions.add(activeThrownDice);
         }

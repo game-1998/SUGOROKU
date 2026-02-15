@@ -109,6 +109,18 @@ body {
   cursor: pointer;
 }
 
+.modal-close {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  font-size: 20px;
+  color: rgb(189, 0, 0);
+  font-weight: bold;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
 .removePlayerPopup {
   background: white;
   border: 2px solid #333;
@@ -166,6 +178,7 @@ body {
 }
 
 .modal-content {
+  position: relative;
   background: #fff;
   padding: 20px;
   border-radius: 8px;

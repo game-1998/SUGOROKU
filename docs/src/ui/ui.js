@@ -196,7 +196,7 @@ export function getColor(index) {
   return colors[index % colors.length];
 }
 
-//ランキング表示
+// ランキング表示（差分対応）
 function showRanking() {
   const players = getPlayers();
   const cells = document.querySelectorAll(".cell");
@@ -210,9 +210,26 @@ function showRanking() {
     return b.position - a.position;
   });
 
-  const message = "🏁 ゲーム終了！\n" + ranked.map((p, i) =>
-    `${i + 1}位：${p.name}（${p.position >= MAX_CELL_INDEX ? "ゴール" : `マス${p.position}`}）`
-  ).join("\n");
+  // 1位の位置（基準）
+  const leaderPos = ranked[0].position;
+
+  const message =
+    "🏁 ゲーム終了！\n" +
+    ranked
+      .map((p, i) => {
+        if (i === 0) {
+          // 1位はそのまま表示
+          const posText =
+            p.position >= MAX_CELL_INDEX ? "ゴール" : `マス${p.position}`;
+          return `1位：${p.name}（${posText}）`;
+        } else {
+          // 2位以下は差分表示
+          const diff = leaderPos - p.position;
+          const amount = diff / 2;
+          return `${i + 1}位：${p.name}（-${diff}マス → ${amount}杯）`;
+        }
+      })
+      .join("\n");
 
   alert(message);
 }

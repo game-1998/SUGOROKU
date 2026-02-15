@@ -54,14 +54,14 @@ export function getPlayers() {
 export function createEventPool(MAX_CELL_INDEX) {
   return [
     ...Array(Math.round(MAX_CELL_INDEX / 2)).fill("半揮"),
-    //...Array(Math.round(MAX_CELL_INDEX / 5)).fill("満水"),
-    //...Array(Math.round(MAX_CELL_INDEX / 3)).fill("次の人 半揮"),
-    //...Array(Math.round(MAX_CELL_INDEX / 3)).fill("前の人 半揮"),
-    //...Array(Math.round(MAX_CELL_INDEX / 5)).fill("指名 半揮"),
-    //...Array(Math.round(MAX_CELL_INDEX / 3)).fill("先頭 半揮"),
+    ...Array(Math.round(MAX_CELL_INDEX / 5)).fill("満水"),
+    ...Array(Math.round(MAX_CELL_INDEX / 3)).fill("次の人 半揮"),
+    ...Array(Math.round(MAX_CELL_INDEX / 3)).fill("前の人 半揮"),
+    ...Array(Math.round(MAX_CELL_INDEX / 5)).fill("指名 半揮"),
+    ...Array(Math.round(MAX_CELL_INDEX / 3)).fill("先頭 半揮"),
     ...Array(Math.round(MAX_CELL_INDEX / 5)).fill("次ターン2倍"),
     ...Array(Math.round(MAX_CELL_INDEX / 5)).fill("次ターン\nサイコロ2個"),
-    //...Array(Math.round(MAX_CELL_INDEX / 10)).fill("サイコロの出目\n×\n半揮"),
+    ...Array(Math.round(MAX_CELL_INDEX / 10)).fill("サイコロの出目\n×\n半揮"),
     ...Array(Math.round(MAX_CELL_INDEX / 5)).fill("ゲーム"),
   ];
 }
@@ -109,7 +109,13 @@ export function addPlayer(name, pieceId) {
   const insertPos = getRandomInsertPosition(leader, tail);
 
   // 新しいプレイヤーオブジェクト
-  const newPlayer = { name, pieceId, position: insertPos, orderIndex: players.length };
+  const newPlayer = {
+    name,
+    pieceId,
+    position: insertPos,
+    orderIndex: players.length,
+    effectMultiplier: 1
+  };
   setPlayers([...players, newPlayer]);
 
   // ターン順序に追加

@@ -84,6 +84,7 @@
     <!-- プレイヤー追加モーダル -->
     <div id="addPlayerModal" class="modal hidden">
       <div class="modal-content">
+        <button id="closeAddPlayerModal" class="modal-close">×</button>
         <h2>プレイヤー追加</h2>
         <div id="addPlayerForm"></div>
         <button id="confirmAddPlayer">決定</button>
@@ -131,13 +132,13 @@
       // DOM がすでに読み込まれているか確認
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', async () => {
-          const { startGameApp } = await import('./src/main.js?v=20260206'); // ver.(1/2か所目)
+          const { startGameApp } = await import('./src/main.js?v=20260215'); // ver.(1/2か所目)
           startGameApp();
         });
       } else {
         // すでに読み込み済みなら即実行
         (async () => {
-          const { startGameApp } = await import('./src/main.js?v=20260206'); // ver.(2/2か所目)
+          const { startGameApp } = await import('./src/main.js?v=20260215'); // ver.(2/2か所目)
           startGameApp();
         })();
       }

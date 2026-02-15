@@ -193,6 +193,10 @@ export async function startGameApp() {
       form.appendChild(newRow);
 
       modal.classList.remove("hidden"); // 表示
+
+      document.getElementById("closeAddPlayerModal").addEventListener("click", () => {
+        document.getElementById("addPlayerModal").classList.add("hidden");
+      });
     });
 
     // 決定ボタン → プレイヤーを追加してモーダルを閉じる
